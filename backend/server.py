@@ -35,6 +35,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
+# PDF and Accounting services
+pdf_generator = PDFInvoiceGenerator()
+accounting_system = FrenchAccounting()
+
 # Create the main app
 app = FastAPI(title="AutoPro Rental Management", version="1.0.0")
 

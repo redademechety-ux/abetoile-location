@@ -434,13 +434,251 @@ async def get_overdue_invoices(current_user: User = Depends(get_current_user)):
 
 @api_router.put("/invoices/{invoice_id}/mark-paid")
 async def mark_invoice_paid(invoice_id: str, current_user: User = Depends(get_current_user)):
+    # Get invoice
+    invoice = await db.invoices.find_one({"id": invoice_id})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Get client
+    client = await db.clients.find_one({"id": invoice['client_id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Mark as paid
+    payment_date = datetime.now(timezone.utc)
     result = await db.invoices.update_one(
         {"id": invoice_id},
-        {"$set": {"status": "paid", "payment_date": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {"status": "paid", "payment_date": payment_date.isoformat()}}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Invoice not found")
-    return {"message": "Invoice marked as paid"}
+    
+    # Generate accounting entries for payment
+    try:
+        settings = await db.settings.find_one()
+        if not settings:
+            settings = {}
+            
+        payment_entries = accounting_system.generate_payment_entries(
+            invoice_data=invoice,
+            client_data=client,
+            payment_date=payment_date,
+            payment_method="bank"
+        )
+        
+        # Save accounting entries to database
+        for entry in payment_entries:
+            entry_dict = prepare_for_mongo(entry.dict())
+            await db.accounting_entries.insert_one(entry_dict)
+        
+    except Exception as e:
+        print(f"Erreur génération écritures de règlement: {e}")
+    
+    return {"message": "Invoice marked as paid and accounting entries generated"}
+
+# PDF Generation endpoints
+@api_router.post("/invoices/{invoice_id}/generate-pdf")
+async def generate_invoice_pdf(invoice_id: str, current_user: User = Depends(get_current_user)):
+    # Get invoice
+    invoice = await db.invoices.find_one({"id": invoice_id})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Get client
+    client = await db.clients.find_one({"id": invoice['client_id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Get company settings
+    settings = await db.settings.find_one()
+    if not settings:
+        settings = {}
+    
+    # Get vehicles details for items
+    items_details = []
+    for item in invoice['items']:
+        vehicle = await db.vehicles.find_one({"id": item['vehicle_id']})
+        if vehicle:
+            item_detail = {
+                **item,
+                'vehicle_brand': vehicle.get('brand', ''),
+                'vehicle_model': vehicle.get('model', ''),
+                'license_plate': vehicle.get('license_plate', '')
+            }
+            items_details.append(item_detail)
+    
+    try:
+        # Generate PDF
+        pdf_data = await pdf_generator.generate_invoice_pdf(
+            invoice_data=invoice,
+            client_data=client,
+            company_settings=settings,
+            items_details=items_details
+        )
+        
+        # Save PDF to invoice
+        await db.invoices.update_one(
+            {"id": invoice_id},
+            {"$set": {"pdf_data": pdf_data, "status": "sent"}}
+        )
+        
+        return {
+            "message": "PDF generated successfully",
+            "pdf_data": pdf_data
+        }
+        
+    except Exception as e:
+        print(f"Erreur génération PDF: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+
+@api_router.get("/invoices/{invoice_id}/download-pdf")
+async def download_invoice_pdf(invoice_id: str, current_user: User = Depends(get_current_user)):
+    invoice = await db.invoices.find_one({"id": invoice_id})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    if not invoice.get('pdf_data'):
+        raise HTTPException(status_code=404, detail="PDF not generated yet")
+    
+    pdf_bytes = base64.b64decode(invoice['pdf_data'])
+    
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=facture_{invoice['invoice_number']}.pdf"
+        }
+    )
+
+# Accounting endpoints
+@api_router.get("/accounting/entries")
+async def get_accounting_entries(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    query = {}
+    if start_date and end_date:
+        query["entry_date"] = {
+            "$gte": start_date,
+            "$lte": end_date
+        }
+    
+    entries = await db.accounting_entries.find(query).to_list(1000)
+    return [AccountingEntry(**parse_from_mongo(entry)) for entry in entries]
+
+@api_router.get("/accounting/summary")
+async def get_accounting_summary(
+    start_date: str,
+    end_date: str,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        start_dt = datetime.fromisoformat(start_date)
+        end_dt = datetime.fromisoformat(end_date)
+        
+        # Get entries from database
+        entries = await db.accounting_entries.find({
+            "entry_date": {
+                "$gte": start_dt.isoformat(),
+                "$lte": end_dt.isoformat()
+            }
+        }).to_list(1000)
+        
+        # Convert to AccountingEntry objects
+        accounting_entries = [AccountingEntry(**parse_from_mongo(entry)) for entry in entries]
+        
+        # Set entries in accounting system
+        accounting_system.entries = accounting_entries
+        
+        # Generate summary
+        summary = accounting_system.get_journal_entries_summary(start_dt, end_dt)
+        return summary
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error generating accounting summary: {str(e)}")
+
+@api_router.get("/accounting/export/csv")
+async def export_accounting_csv(
+    start_date: str,
+    end_date: str,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        start_dt = datetime.fromisoformat(start_date)
+        end_dt = datetime.fromisoformat(end_date)
+        
+        # Get entries from database
+        entries = await db.accounting_entries.find({
+            "entry_date": {
+                "$gte": start_dt.isoformat(),
+                "$lte": end_dt.isoformat()
+            }
+        }).to_list(1000)
+        
+        # Convert to AccountingEntry objects
+        accounting_entries = [AccountingEntry(**parse_from_mongo(entry)) for entry in entries]
+        
+        # Generate CSV
+        csv_data = accounting_system.export_to_csv(accounting_entries)
+        
+        return Response(
+            content=csv_data,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename=comptabilite_{start_date}_{end_date}.csv"
+            }
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error exporting CSV: {str(e)}")
+
+@api_router.get("/accounting/export/{format}")
+async def export_accounting_format(
+    format: str,
+    start_date: str,
+    end_date: str,
+    current_user: User = Depends(get_current_user)
+):
+    if format not in ['ciel', 'sage', 'cegid']:
+        raise HTTPException(status_code=400, detail="Format not supported. Use: ciel, sage, or cegid")
+    
+    try:
+        start_dt = datetime.fromisoformat(start_date)
+        end_dt = datetime.fromisoformat(end_date)
+        
+        # Get entries from database
+        entries = await db.accounting_entries.find({
+            "entry_date": {
+                "$gte": start_dt.isoformat(),
+                "$lte": end_dt.isoformat()
+            }
+        }).to_list(1000)
+        
+        # Convert to AccountingEntry objects
+        accounting_entries = [AccountingEntry(**parse_from_mongo(entry)) for entry in entries]
+        
+        # Generate export based on format
+        if format == 'ciel':
+            export_data = accounting_system.export_to_ciel(accounting_entries)
+            filename = f"comptabilite_ciel_{start_date}_{end_date}.txt"
+        elif format == 'sage':
+            export_data = accounting_system.export_to_sage(accounting_entries)
+            filename = f"comptabilite_sage_{start_date}_{end_date}.csv"
+        elif format == 'cegid':
+            export_data = accounting_system.export_to_cegid(accounting_entries)
+            filename = f"comptabilite_cegid_{start_date}_{end_date}.csv"
+        
+        return Response(
+            content=export_data,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error exporting {format}: {str(e)}")
 
 # Dashboard endpoint
 @api_router.get("/dashboard")

@@ -411,6 +411,41 @@ async def create_invoice_from_order(order: Order, client: dict):
     
     invoice_dict = prepare_for_mongo(invoice.dict())
     await db.invoices.insert_one(invoice_dict)
+    
+    # Generate accounting entries for the invoice
+    try:
+        settings = await db.settings.find_one()
+        if not settings:
+            settings = {}
+        
+        # Get vehicles details for items
+        items_details = []
+        for item in order.items:
+            vehicle = await db.vehicles.find_one({"id": item.vehicle_id})
+            if vehicle:
+                items_details.append({
+                    **item.dict(),
+                    'vehicle_brand': vehicle.get('brand', ''),
+                    'vehicle_model': vehicle.get('model', ''),
+                    'license_plate': vehicle.get('license_plate', '')
+                })
+        
+        # Generate accounting entries
+        entries = accounting_system.generate_invoice_entries(
+            invoice_data=invoice.dict(),
+            client_data=client,
+            items_data=items_details,
+            settings=settings
+        )
+        
+        # Save accounting entries to database
+        for entry in entries:
+            entry_dict = prepare_for_mongo(entry.dict())
+            await db.accounting_entries.insert_one(entry_dict)
+            
+    except Exception as e:
+        print(f"Erreur génération écritures comptables: {e}")
+        # Continue even if accounting fails
 
 @api_router.get("/orders", response_model=List[Order])
 async def get_orders(current_user: User = Depends(get_current_user)):

@@ -15,6 +15,7 @@ import OrderForm from './components/OrderForm';
 import InvoiceList from './components/InvoiceList';
 import Settings from './components/Settings';
 import Navigation from './components/Navigation';
+import AccountingDashboard from './components/AccountingDashboard';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;

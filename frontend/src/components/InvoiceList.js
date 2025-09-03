@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, Receipt, Download, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Search, Receipt, Download, CheckCircle, AlertTriangle, FileText, Loader } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -11,6 +11,7 @@ const InvoiceList = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
+  const [generatingPdf, setGeneratingPdf] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -71,6 +72,64 @@ const InvoiceList = () => {
       fetchData();
     } catch (error) {
       console.error('Erreur lors du marquage comme payée:', error);
+    }
+  };
+
+  const generatePdf = async (invoiceId) => {
+    setGeneratingPdf(prev => ({ ...prev, [invoiceId]: true }));
+    try {
+      const response = await axios.post(`${API}/invoices/${invoiceId}/generate-pdf`);
+      
+      if (response.data.pdf_data) {
+        // Auto-download the PDF
+        const pdfBytes = atob(response.data.pdf_data);
+        const pdfArray = new Uint8Array(pdfBytes.length);
+        for (let i = 0; i < pdfBytes.length; i++) {
+          pdfArray[i] = pdfBytes.charCodeAt(i);
+        }
+        
+        const blob = new Blob([pdfArray], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        const invoice = invoices.find(inv => inv.id === invoiceId);
+        link.setAttribute('download', `facture_${invoice?.invoice_number || invoiceId}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        
+        // Refresh invoice list to update status
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      alert('Erreur lors de la génération du PDF. Veuillez réessayer.');
+    } finally {
+      setGeneratingPdf(prev => ({ ...prev, [invoiceId]: false }));
+    }
+  };
+
+  const downloadPdf = async (invoiceId) => {
+    try {
+      const response = await axios.get(`${API}/invoices/${invoiceId}/download-pdf`, {
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const invoice = invoices.find(inv => inv.id === invoiceId);
+      link.setAttribute('download', `facture_${invoice?.invoice_number || invoiceId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur lors du téléchargement du PDF:', error);
+      alert('PDF non trouvé ou erreur de téléchargement.');
     }
   };
 
@@ -188,6 +247,7 @@ const InvoiceList = () => {
                     <th>Échéance</th>
                     <th>Montant TTC</th>
                     <th>Statut</th>
+                    <th>PDF</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -216,6 +276,30 @@ const InvoiceList = () => {
                         </span>
                       </td>
                       <td>
+                        {invoice.pdf_data ? (
+                          <button
+                            onClick={() => downloadPdf(invoice.id)}
+                            className="btn btn-sm btn-secondary"
+                            title="Télécharger PDF existant"
+                          >
+                            <Download size={16} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => generatePdf(invoice.id)}
+                            className="btn btn-sm btn-primary"
+                            disabled={generatingPdf[invoice.id]}
+                            title="Générer PDF avec IA"
+                          >
+                            {generatingPdf[invoice.id] ? (
+                              <Loader className="animate-spin" size={16} />
+                            ) : (
+                              <FileText size={16} />
+                            )}
+                          </button>
+                        )}
+                      </td>
+                      <td>
                         <div className="flex gap-2">
                           {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                             <button
@@ -226,12 +310,6 @@ const InvoiceList = () => {
                               <CheckCircle size={16} />
                             </button>
                           )}
-                          <button
-                            className="btn btn-sm btn-secondary"
-                            title="Télécharger PDF"
-                          >
-                            <Download size={16} />
-                          </button>
                         </div>
                       </td>
                     </tr>

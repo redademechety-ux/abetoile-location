@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Car, Users, FileText, Receipt, Settings, LogOut, BarChart3 } from 'lucide-react';
+import { Car, Users, FileText, Receipt, Settings, LogOut, BarChart3, Calculator } from 'lucide-react';
 
 const Navigation = ({ onLogout }) => {
   const location = useLocation();

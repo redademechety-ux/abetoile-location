@@ -1,0 +1,361 @@
+import requests
+import sys
+from datetime import datetime, timezone, timedelta
+import json
+
+class AutoProAPITester:
+    def __init__(self, base_url="https://autopro-rental.preview.emergentagent.com/api"):
+        self.base_url = base_url
+        self.token = None
+        self.tests_run = 0
+        self.tests_passed = 0
+        self.test_data = {}
+
+    def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
+        """Run a single API test"""
+        url = f"{self.base_url}/{endpoint}"
+        headers = {'Content-Type': 'application/json'}
+        if self.token:
+            headers['Authorization'] = f'Bearer {self.token}'
+
+        self.tests_run += 1
+        print(f"\n🔍 Testing {name}...")
+        print(f"   URL: {url}")
+        
+        try:
+            if method == 'GET':
+                response = requests.get(url, headers=headers, params=params)
+            elif method == 'POST':
+                response = requests.post(url, json=data, headers=headers)
+            elif method == 'PUT':
+                response = requests.put(url, json=data, headers=headers)
+            elif method == 'DELETE':
+                response = requests.delete(url, headers=headers)
+
+            success = response.status_code == expected_status
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                try:
+                    return success, response.json()
+                except:
+                    return success, {}
+            else:
+                print(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
+                try:
+                    error_detail = response.json()
+                    print(f"   Error: {error_detail}")
+                except:
+                    print(f"   Response: {response.text}")
+                return False, {}
+
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False, {}
+
+    def test_auth_register(self):
+        """Test user registration"""
+        user_data = {
+            "username": "testuser",
+            "email": "test@example.com", 
+            "password": "test123",
+            "full_name": "Test User"
+        }
+        success, response = self.run_test(
+            "User Registration",
+            "POST",
+            "auth/register",
+            200,
+            data=user_data
+        )
+        if success:
+            self.test_data['user_id'] = response.get('id')
+        return success
+
+    def test_auth_login(self):
+        """Test user login"""
+        login_data = {
+            "username": "testuser",
+            "password": "test123"
+        }
+        success, response = self.run_test(
+            "User Login",
+            "POST", 
+            "auth/login",
+            200,
+            data=login_data
+        )
+        if success and 'access_token' in response:
+            self.token = response['access_token']
+            print(f"   Token obtained: {self.token[:20]}...")
+        return success
+
+    def test_auth_me(self):
+        """Test get current user"""
+        success, response = self.run_test(
+            "Get Current User",
+            "GET",
+            "auth/me", 
+            200
+        )
+        return success
+
+    def test_create_client(self):
+        """Test client creation"""
+        client_data = {
+            "company_name": "Test Company Ltd",
+            "contact_name": "John Doe",
+            "email": "john@testcompany.com",
+            "phone": "+33123456789",
+            "address": "123 Test Street",
+            "city": "Paris",
+            "postal_code": "75001",
+            "country": "France",
+            "vat_rate": 20.0,
+            "vat_number": "FR12345678901",
+            "rcs_number": "123456789"
+        }
+        success, response = self.run_test(
+            "Create Client",
+            "POST",
+            "clients",
+            200,
+            data=client_data
+        )
+        if success:
+            self.test_data['client_id'] = response.get('id')
+        return success
+
+    def test_get_clients(self):
+        """Test get all clients"""
+        success, response = self.run_test(
+            "Get All Clients",
+            "GET",
+            "clients",
+            200
+        )
+        return success
+
+    def test_get_client(self):
+        """Test get specific client"""
+        if 'client_id' not in self.test_data:
+            print("❌ Skipping - No client ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Get Specific Client",
+            "GET",
+            f"clients/{self.test_data['client_id']}",
+            200
+        )
+        return success
+
+    def test_create_vehicle(self):
+        """Test vehicle creation"""
+        vehicle_data = {
+            "type": "car",
+            "brand": "Renault",
+            "model": "Clio",
+            "license_plate": "AB-123-CD",
+            "first_registration": "2020-01-15T00:00:00Z",
+            "technical_control_expiry": "2025-01-15T00:00:00Z",
+            "insurance_company": "AXA Insurance",
+            "insurance_contract": "POL123456",
+            "insurance_amount": 5000.0,
+            "insurance_expiry": "2025-12-31T00:00:00Z",
+            "daily_rate": 45.0,
+            "accounting_account": "706000"
+        }
+        success, response = self.run_test(
+            "Create Vehicle",
+            "POST",
+            "vehicles",
+            200,
+            data=vehicle_data
+        )
+        if success:
+            self.test_data['vehicle_id'] = response.get('id')
+        return success
+
+    def test_get_vehicles(self):
+        """Test get all vehicles"""
+        success, response = self.run_test(
+            "Get All Vehicles",
+            "GET",
+            "vehicles",
+            200
+        )
+        return success
+
+    def test_create_order(self):
+        """Test order creation"""
+        if 'client_id' not in self.test_data or 'vehicle_id' not in self.test_data:
+            print("❌ Skipping - Missing client or vehicle ID")
+            return False
+            
+        order_data = {
+            "client_id": self.test_data['client_id'],
+            "items": [
+                {
+                    "vehicle_id": self.test_data['vehicle_id'],
+                    "quantity": 1,
+                    "daily_rate": 45.0,
+                    "is_renewable": True,
+                    "rental_period": "days",
+                    "rental_duration": 7
+                }
+            ],
+            "start_date": "2024-12-01T00:00:00Z"
+        }
+        success, response = self.run_test(
+            "Create Order",
+            "POST",
+            "orders",
+            200,
+            data=order_data
+        )
+        if success:
+            self.test_data['order_id'] = response.get('id')
+        return success
+
+    def test_get_orders(self):
+        """Test get all orders"""
+        success, response = self.run_test(
+            "Get All Orders",
+            "GET",
+            "orders",
+            200
+        )
+        return success
+
+    def test_get_invoices(self):
+        """Test get all invoices"""
+        success, response = self.run_test(
+            "Get All Invoices",
+            "GET",
+            "invoices",
+            200
+        )
+        return success
+
+    def test_get_overdue_invoices(self):
+        """Test get overdue invoices"""
+        success, response = self.run_test(
+            "Get Overdue Invoices",
+            "GET",
+            "invoices/overdue",
+            200
+        )
+        return success
+
+    def test_dashboard(self):
+        """Test dashboard endpoint"""
+        success, response = self.run_test(
+            "Get Dashboard Data",
+            "GET",
+            "dashboard",
+            200
+        )
+        if success:
+            print(f"   Dashboard data: {response}")
+        return success
+
+    def test_get_settings(self):
+        """Test get settings"""
+        success, response = self.run_test(
+            "Get Settings",
+            "GET",
+            "settings",
+            200
+        )
+        return success
+
+    def test_update_settings(self):
+        """Test update settings"""
+        settings_data = {
+            "id": "test-settings-id",
+            "company_name": "AutoPro Rental Test",
+            "company_address": "123 Test Avenue, Paris",
+            "company_phone": "+33123456789",
+            "company_email": "contact@autopro-test.com",
+            "vat_rates": {"standard": 20.0, "reduced": 10.0, "super_reduced": 5.5},
+            "payment_delays": {"days": 30, "weeks": 7, "months": 30, "years": 365},
+            "reminder_periods": [7, 15, 30],
+            "reminder_templates": {},
+            "accounting_accounts": {
+                "sales": "706000",
+                "vat_standard": "445571", 
+                "vat_reduced": "445572"
+            },
+            "mailgun_api_key": "test-key",
+            "mailgun_domain": "test-domain.com"
+        }
+        success, response = self.run_test(
+            "Update Settings",
+            "PUT",
+            "settings",
+            200,
+            data=settings_data
+        )
+        return success
+
+def main():
+    print("🚀 Starting AutoPro Rental API Tests")
+    print("=" * 50)
+    
+    tester = AutoProAPITester()
+    
+    # Test sequence
+    tests = [
+        # Authentication tests
+        ("Authentication - Register", tester.test_auth_register),
+        ("Authentication - Login", tester.test_auth_login),
+        ("Authentication - Get Me", tester.test_auth_me),
+        
+        # Client tests
+        ("Client - Create", tester.test_create_client),
+        ("Client - Get All", tester.test_get_clients),
+        ("Client - Get Specific", tester.test_get_client),
+        
+        # Vehicle tests
+        ("Vehicle - Create", tester.test_create_vehicle),
+        ("Vehicle - Get All", tester.test_get_vehicles),
+        
+        # Order tests
+        ("Order - Create", tester.test_create_order),
+        ("Order - Get All", tester.test_get_orders),
+        
+        # Invoice tests
+        ("Invoice - Get All", tester.test_get_invoices),
+        ("Invoice - Get Overdue", tester.test_get_overdue_invoices),
+        
+        # Dashboard and Settings
+        ("Dashboard - Get Data", tester.test_dashboard),
+        ("Settings - Get", tester.test_get_settings),
+        ("Settings - Update", tester.test_update_settings),
+    ]
+    
+    # Run all tests
+    for test_name, test_func in tests:
+        try:
+            test_func()
+        except Exception as e:
+            print(f"❌ {test_name} - Exception: {str(e)}")
+    
+    # Print final results
+    print("\n" + "=" * 50)
+    print(f"📊 FINAL RESULTS")
+    print(f"Tests Run: {tester.tests_run}")
+    print(f"Tests Passed: {tester.tests_passed}")
+    print(f"Tests Failed: {tester.tests_run - tester.tests_passed}")
+    print(f"Success Rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
+    
+    if tester.tests_passed == tester.tests_run:
+        print("🎉 All tests passed!")
+        return 0
+    else:
+        print("⚠️  Some tests failed!")
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main())

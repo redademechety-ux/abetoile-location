@@ -299,6 +299,186 @@ class AutoProAPITester:
         )
         return success
 
+    def test_generate_invoice_pdf(self):
+        """Test PDF generation for invoice"""
+        # First get an invoice ID
+        success, invoices_response = self.run_test(
+            "Get Invoices for PDF Test",
+            "GET",
+            "invoices",
+            200
+        )
+        
+        if not success or not invoices_response:
+            print("❌ No invoices found for PDF generation test")
+            return False
+            
+        invoices = invoices_response
+        if not invoices:
+            print("❌ No invoices available for PDF generation")
+            return False
+            
+        invoice_id = invoices[0]['id']
+        self.test_data['invoice_id'] = invoice_id
+        
+        success, response = self.run_test(
+            "Generate Invoice PDF",
+            "POST",
+            f"invoices/{invoice_id}/generate-pdf",
+            200
+        )
+        
+        if success and response.get('pdf_data'):
+            print(f"   PDF generated successfully (size: {len(response['pdf_data'])} chars)")
+            
+        return success
+
+    def test_download_invoice_pdf(self):
+        """Test PDF download for invoice"""
+        if 'invoice_id' not in self.test_data:
+            print("❌ Skipping - No invoice ID available for PDF download")
+            return False
+            
+        invoice_id = self.test_data['invoice_id']
+        
+        success, response = self.run_test(
+            "Download Invoice PDF",
+            "GET",
+            f"invoices/{invoice_id}/download-pdf",
+            200
+        )
+        return success
+
+    def test_mark_invoice_paid(self):
+        """Test marking invoice as paid"""
+        if 'invoice_id' not in self.test_data:
+            print("❌ Skipping - No invoice ID available")
+            return False
+            
+        invoice_id = self.test_data['invoice_id']
+        
+        success, response = self.run_test(
+            "Mark Invoice as Paid",
+            "PUT",
+            f"invoices/{invoice_id}/mark-paid",
+            200
+        )
+        return success
+
+    def test_get_accounting_entries(self):
+        """Test get accounting entries"""
+        today = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        success, response = self.run_test(
+            "Get Accounting Entries",
+            "GET",
+            "accounting/entries",
+            200,
+            params={
+                'start_date': start_date,
+                'end_date': today
+            }
+        )
+        
+        if success:
+            print(f"   Found {len(response)} accounting entries")
+            
+        return success
+
+    def test_get_accounting_summary(self):
+        """Test get accounting summary"""
+        today = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        success, response = self.run_test(
+            "Get Accounting Summary",
+            "GET",
+            "accounting/summary",
+            200,
+            params={
+                'start_date': start_date,
+                'end_date': today
+            }
+        )
+        
+        if success:
+            summary = response.get('summary', {})
+            print(f"   Total entries: {summary.get('total_entries', 0)}")
+            print(f"   Total debit: {summary.get('total_debit', 0):.2f} €")
+            print(f"   Total credit: {summary.get('total_credit', 0):.2f} €")
+            print(f"   Is balanced: {summary.get('is_balanced', False)}")
+            
+        return success
+
+    def test_export_accounting_csv(self):
+        """Test export accounting to CSV"""
+        today = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        success, response = self.run_test(
+            "Export Accounting CSV",
+            "GET",
+            "accounting/export/csv",
+            200,
+            params={
+                'start_date': start_date,
+                'end_date': today
+            }
+        )
+        return success
+
+    def test_export_accounting_ciel(self):
+        """Test export accounting to CIEL format"""
+        today = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        success, response = self.run_test(
+            "Export Accounting CIEL",
+            "GET",
+            "accounting/export/ciel",
+            200,
+            params={
+                'start_date': start_date,
+                'end_date': today
+            }
+        )
+        return success
+
+    def test_export_accounting_sage(self):
+        """Test export accounting to SAGE format"""
+        today = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        success, response = self.run_test(
+            "Export Accounting SAGE",
+            "GET",
+            "accounting/export/sage",
+            200,
+            params={
+                'start_date': start_date,
+                'end_date': today
+            }
+        )
+        return success
+
+    def test_export_accounting_cegid(self):
+        """Test export accounting to CEGID format"""
+        today = datetime.now().strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        success, response = self.run_test(
+            "Export Accounting CEGID",
+            "GET",
+            "accounting/export/cegid",
+            200,
+            params={
+                'start_date': start_date,
+                'end_date': today
+            }
+        )
+        return success
+
 def main():
     print("🚀 Starting AutoPro Rental API Tests")
     print("=" * 50)

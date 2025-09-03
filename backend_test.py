@@ -509,6 +509,19 @@ def main():
         ("Invoice - Get All", tester.test_get_invoices),
         ("Invoice - Get Overdue", tester.test_get_overdue_invoices),
         
+        # NEW PDF Generation tests
+        ("PDF - Generate Invoice PDF", tester.test_generate_invoice_pdf),
+        ("PDF - Download Invoice PDF", tester.test_download_invoice_pdf),
+        ("Invoice - Mark as Paid", tester.test_mark_invoice_paid),
+        
+        # NEW Accounting tests
+        ("Accounting - Get Entries", tester.test_get_accounting_entries),
+        ("Accounting - Get Summary", tester.test_get_accounting_summary),
+        ("Accounting - Export CSV", tester.test_export_accounting_csv),
+        ("Accounting - Export CIEL", tester.test_export_accounting_ciel),
+        ("Accounting - Export SAGE", tester.test_export_accounting_sage),
+        ("Accounting - Export CEGID", tester.test_export_accounting_cegid),
+        
         # Dashboard and Settings
         ("Dashboard - Get Data", tester.test_dashboard),
         ("Settings - Get", tester.test_get_settings),

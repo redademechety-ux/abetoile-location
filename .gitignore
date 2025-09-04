@@ -296,4 +296,7 @@ dump/
 uploads/
 temp/
 cache/
-*.pid
+*.pid-e 
+# Environment files
+*.env
+*.env.*

@@ -1,0 +1,89 @@
+{
+  "name": "abetoile-rental-management",
+  "version": "1.0.0",
+  "description": "Système complet de gestion de location de véhicules avec IA intégrée",
+  "keywords": [
+    "rental",
+    "vehicle-management",
+    "react",
+    "fastapi",
+    "mongodb",
+    "french-accounting",
+    "pdf-generation",
+    "ai-powered"
+  ],
+  "author": {
+    "name": "Abetoile Rental",
+    "email": "contact@abetoile-rental.com",
+    "url": "https://abetoile-rental.com"
+  },
+  "license": "PROPRIETARY",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VOTRE-USERNAME/abetoile-rental.git"
+  },
+  "bugs": {
+    "url": "https://github.com/VOTRE-USERNAME/abetoile-rental/issues"
+  },
+  "homepage": "https://abetoile-rental.com",
+  "scripts": {
+    "install-server": "chmod +x install.sh && sudo ./install.sh",
+    "deploy": "chmod +x deploy.sh && sudo ./deploy.sh",
+    "start": "cd frontend && yarn start",
+    "start:backend": "cd backend && source venv/bin/activate && python server.py",
+    "build": "cd frontend && yarn build",
+    "test": "cd frontend && yarn test",
+    "backup": "sudo abetoile-backup",
+    "restart-services": "sudo abetoile-restart",
+    "logs:backend": "sudo journalctl -u abetoile-backend -f",
+    "logs:nginx": "sudo tail -f /var/log/nginx/abetoile-rental.error.log"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.11.0"
+  },
+  "os": [
+    "linux"
+  ],
+  "directories": {
+    "lib": "backend",
+    "doc": "docs",
+    "test": "tests"
+  },
+  "files": [
+    "backend/",
+    "frontend/",
+    "install.sh",
+    "deploy.sh",
+    "README.md"
+  ],
+  "config": {
+    "domain": "abetoile-rental.com",
+    "backend_port": "8001",
+    "database": "abetoile_rental_prod"
+  },
+  "dependencies": {
+    "backend": {
+      "fastapi": "0.110.1",
+      "uvicorn": "0.25.0",
+      "pymongo": "4.5.0",
+      "motor": "3.3.1",
+      "pydantic": ">=2.6.4",
+      "python-jose": ">=3.3.0",
+      "passlib": ">=1.7.4",
+      "bcrypt": ">=4.0.1",
+      "emergentintegrations": ">=0.1.0",
+      "reportlab": ">=4.0.0"
+    },
+    "frontend": {
+      "react": "^19.0.0",
+      "react-dom": "^19.0.0",
+      "react-router-dom": "^7.5.1",
+      "axios": "^1.8.4",
+      "tailwindcss": "^3.4.17",
+      "lucide-react": "^0.507.0"
+    }
+  },
+  "devDependencies": {},
+  "private": true
+}

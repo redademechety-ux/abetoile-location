@@ -40,7 +40,7 @@ pdf_generator = PDFInvoiceGenerator()
 accounting_system = FrenchAccounting()
 
 # Create the main app
-app = FastAPI(title="AutoPro Rental Management", version="1.0.0")
+app = FastAPI(title="Abetoile Location Management", version="1.0.0")
 
 # Create API router
 api_router = APIRouter(prefix="/api")

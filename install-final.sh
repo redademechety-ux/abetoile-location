@@ -322,12 +322,25 @@ try {
 log_success "Base de données configurée"
 
 # =============================================================================
-# CONFIGURATION APPLICATION
+# CONFIGURATION APPLICATION (AVEC ENVIRONNEMENT VIRTUEL PYTHON)
 # =============================================================================
-log_info "⚙️ Configuration application..."
+log_info "⚙️ Configuration application avec environnement virtuel..."
 
 # Clé secrète
 SECRET_KEY=$(openssl rand -hex 32)
+
+# Créer environnement virtuel Python pour le backend
+log_info "Création de l'environnement virtuel Python..."
+cd $APP_DIR/backend
+sudo -u www-data python3 -m venv venv
+
+# Vérifier que l'environnement virtuel fonctionne
+if [[ ! -f "$APP_DIR/backend/venv/bin/activate" ]]; then
+    log_error "Échec création environnement virtuel"
+    exit 1
+fi
+
+log_success "Environnement virtuel Python créé"
 
 # Backend .env
 cat > $APP_DIR/backend/.env << EOF
@@ -343,7 +356,7 @@ cat > $APP_DIR/frontend/.env << EOF
 REACT_APP_BACKEND_URL=https://$DOMAIN
 EOF
 
-# Service systemd
+# Service systemd (utilise l'environnement virtuel)
 cat > /etc/systemd/system/$SERVICE_NAME.service << EOF
 [Unit]
 Description=Abetoile Location Backend

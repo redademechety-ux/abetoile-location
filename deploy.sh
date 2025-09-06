@@ -109,22 +109,25 @@ fi
 log_success "Branding mis à jour pour Abetoile Location"
 
 # =============================================================================
-# INSTALLATION DES DÉPENDANCES BACKEND
+# INSTALLATION DES DÉPENDANCES BACKEND (ENVIRONNEMENT VIRTUEL)
 # =============================================================================
-log_info "🐍 Installation des dépendances Python..."
+log_info "🐍 Installation des dépendances Python dans l'environnement virtuel..."
 
 cd $APP_DIR/backend
 
-# Créer l'environnement virtuel
-python3.11 -m venv venv
-source venv/bin/activate
+# Utiliser l'environnement virtuel créé par install-final.sh
+if [ ! -d "venv" ]; then
+    log_info "Création de l'environnement virtuel Python..."
+    sudo -u www-data python3 -m venv venv
+fi
 
-# Installer les dépendances
-pip install --upgrade pip
-pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
-pip install -r requirements.txt
+# Activer et installer les dépendances dans l'environnement virtuel
+log_info "Installation des dépendances dans l'environnement virtuel..."
+sudo -u www-data bash -c "source venv/bin/activate && pip install --upgrade pip"
+sudo -u www-data bash -c "source venv/bin/activate && pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/"
+sudo -u www-data bash -c "source venv/bin/activate && pip install -r requirements.txt"
 
-log_success "Dépendances Python installées"
+log_success "Dépendances Python installées dans l'environnement virtuel"
 
 # =============================================================================
 # INSTALLATION DES DÉPENDANCES FRONTEND

@@ -435,7 +435,7 @@ cat > $APP_DIR/frontend/.env << EOF
 REACT_APP_BACKEND_URL=https://$DOMAIN
 EOF
 
-# Service systemd (utilise l'environnement virtuel)
+# Service systemd (sera activé après déploiement du code)
 cat > /etc/systemd/system/$SERVICE_NAME.service << EOF
 [Unit]
 Description=Abetoile Location Backend
@@ -457,6 +457,8 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 EOF
+
+log_info "Service systemd créé (sera activé après déploiement du code)"
 
 # Permissions
 chmod 600 $APP_DIR/backend/.env

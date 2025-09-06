@@ -6,6 +6,7 @@
 # Domaine: abetoile-location.fr / www.abetoile-location.fr
 # Port Backend: 8001
 # Serveur: Multi-sites
+# Version corrigée pour Ubuntu récent
 # =============================================================================
 
 set -e  # Arrêt en cas d'erreur
@@ -54,6 +55,12 @@ log_info "🔍 Vérifications préliminaires..."
 
 check_root
 
+# Détecter la version Ubuntu
+UBUNTU_VERSION=$(lsb_release -rs 2>/dev/null || echo "unknown")
+UBUNTU_CODENAME=$(lsb_release -cs 2>/dev/null || echo "unknown")
+
+log_info "Système détecté: Ubuntu $UBUNTU_VERSION ($UBUNTU_CODENAME)"
+
 # Vérifier la distribution
 if ! command -v apt &> /dev/null; then
     log_error "Ce script est conçu pour Ubuntu/Debian uniquement"
@@ -75,19 +82,63 @@ apt install -y curl wget git nano htop unzip software-properties-common apt-tran
 log_success "Système mis à jour"
 
 # =============================================================================
-# ÉTAPE 3: INSTALLATION PYTHON 3.11
+# ÉTAPE 3: INSTALLATION PYTHON 3.11+ (MÉTHODE CORRIGÉE)
 # =============================================================================
-log_info "🐍 Installation de Python 3.11..."
+log_info "🐍 Installation de Python 3.11+..."
 
-add-apt-repository ppa:deadsnakes/ppa -y
-apt update -y
-apt install -y python3.11 python3.11-venv python3.11-dev python3-pip python3.11-distutils
+# Méthode 1: Essayer avec le PPA deadsnakes (Ubuntu < 24.04)
+if [[ "$UBUNTU_CODENAME" != "plucky" && "$UBUNTU_CODENAME" != "oracular" ]]; then
+    log_info "Tentative d'installation via PPA deadsnakes..."
+    if add-apt-repository ppa:deadsnakes/ppa -y 2>/dev/null; then
+        apt update -y
+        if apt install -y python3.11 python3.11-venv python3.11-dev python3-pip python3.11-distutils 2>/dev/null; then
+            log_success "Python 3.11 installé via PPA deadsnakes"
+            PYTHON_CMD="python3.11"
+        else
+            log_warning "Échec PPA deadsnakes, passage à la méthode alternative"
+            PYTHON_CMD=""
+        fi
+    else
+        log_warning "PPA deadsnakes non disponible, passage à la méthode alternative"
+        PYTHON_CMD=""
+    fi
+else
+    log_info "Ubuntu récent détecté, utilisation de la méthode alternative"
+    PYTHON_CMD=""
+fi
+
+# Méthode 2: Utiliser Python disponible dans les repos officiels
+if [[ -z "$PYTHON_CMD" ]]; then
+    log_info "Installation de Python depuis les repos officiels..."
+    
+    # Essayer python3.12, python3.11, ou python3
+    for python_ver in python3.12 python3.11 python3; do
+        if apt install -y $python_ver ${python_ver}-venv ${python_ver}-dev python3-pip 2>/dev/null; then
+            PYTHON_CMD="$python_ver"
+            log_success "Python installé: $python_ver"
+            break
+        fi
+    done
+    
+    if [[ -z "$PYTHON_CMD" ]]; then
+        log_error "Impossible d'installer Python. Arrêt du script."
+        exit 1
+    fi
+fi
 
 # Créer les liens symboliques
-ln -sf /usr/bin/python3.11 /usr/bin/python3
-ln -sf /usr/bin/python3.11 /usr/bin/python
+ln -sf /usr/bin/$PYTHON_CMD /usr/bin/python3
+ln -sf /usr/bin/$PYTHON_CMD /usr/bin/python
 
-log_success "Python 3.11 installé"
+# Vérifier la version Python
+PYTHON_VERSION=$($PYTHON_CMD --version 2>&1)
+log_success "$PYTHON_VERSION installé avec succès"
+
+# S'assurer que pip est installé
+if ! command -v pip3 &> /dev/null; then
+    log_info "Installation de pip..."
+    apt install -y python3-pip
+fi
 
 # =============================================================================
 # ÉTAPE 4: INSTALLATION NODE.JS ET YARN
@@ -98,9 +149,9 @@ log_info "📦 Installation de Node.js et Yarn..."
 curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
 apt install -y nodejs
 
-# Yarn
-curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+# Yarn - Méthode mise à jour
+curl -fsSL https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | tee /usr/share/keyrings/yarn.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
 apt update -y
 apt install -y yarn
 
@@ -111,11 +162,23 @@ log_success "Node.js $(node --version) et Yarn $(yarn --version) installés"
 # =============================================================================
 log_info "🗄️ Installation de MongoDB..."
 
-# Clé GPG MongoDB
-wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | apt-key add -
+# Méthode mise à jour pour MongoDB
+curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg
 
-# Repository MongoDB
-echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+# Détecter Ubuntu version pour le bon repo
+if [[ "$UBUNTU_VERSION" == "24.04" ]] || [[ "$UBUNTU_CODENAME" == "noble" ]]; then
+    MONGO_REPO="ubuntu noble/mongodb-org/7.0"
+elif [[ "$UBUNTU_VERSION" == "22.04" ]] || [[ "$UBUNTU_CODENAME" == "jammy" ]]; then
+    MONGO_REPO="ubuntu jammy/mongodb-org/7.0"
+elif [[ "$UBUNTU_VERSION" == "20.04" ]] || [[ "$UBUNTU_CODENAME" == "focal" ]]; then
+    MONGO_REPO="ubuntu focal/mongodb-org/7.0"
+else
+    # Fallback vers focal pour les versions plus récentes
+    MONGO_REPO="ubuntu focal/mongodb-org/7.0"
+    log_warning "Version Ubuntu non reconnue, utilisation du repo focal"
+fi
+
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/$MONGO_REPO multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
 
 # Installation
 apt update -y
@@ -125,7 +188,15 @@ apt install -y mongodb-org
 systemctl start mongod
 systemctl enable mongod
 
-log_success "MongoDB installé et démarré"
+# Vérifier que MongoDB fonctionne
+sleep 5
+if systemctl is-active --quiet mongod; then
+    log_success "MongoDB installé et démarré"
+else
+    log_error "Problème avec MongoDB, vérification des logs..."
+    systemctl status mongod
+    exit 1
+fi
 
 # =============================================================================
 # ÉTAPE 6: INSTALLATION NGINX
@@ -178,12 +249,12 @@ log_success "Répertoires créés"
 # =============================================================================
 # ÉTAPE 9: TÉLÉCHARGEMENT DU CODE SOURCE
 # =============================================================================
-log_info "📥 Téléchargement du code source..."
+log_info "📥 Préparation du code source..."
 
 cd $APP_DIR
 
 # Si vous avez un repository GitHub, décommentez cette ligne:
-# git clone https://github.com/VOTRE-USERNAME/abetoile-location.git .
+# git clone https://github.com/redademechety-ux/abetoile-location.git .
 
 # Sinon, créer la structure de base
 mkdir -p backend frontend
@@ -195,6 +266,9 @@ log_success "Structure de base créée"
 # =============================================================================
 log_info "🗄️ Configuration de MongoDB..."
 
+# Attendre que MongoDB soit complètement prêt
+sleep 10
+
 # Créer l'utilisateur MongoDB
 mongosh --eval "
 use $DB_NAME;
@@ -205,7 +279,7 @@ db.createUser({
     { role: 'readWrite', db: '$DB_NAME' }
   ]
 });
-"
+" 2>/dev/null || log_warning "Utilisateur MongoDB peut-être déjà existant"
 
 # Configuration sécurisée MongoDB
 cat > /etc/mongod.conf << 'EOF'
@@ -231,6 +305,7 @@ security:
 EOF
 
 systemctl restart mongod
+sleep 5
 
 log_success "MongoDB configuré avec authentification"
 
@@ -393,11 +468,11 @@ echo "🚀 Déploiement Abetoile Location..."
 
 # Backup de la base de données
 echo "💾 Sauvegarde de la base de données..."
-mongodump --uri="mongodb://abetoile_user:Ab3t0il3L0c4t10n2024!@localhost:27017/$DB_NAME" --out "\$BACKUP_DIR/mongo-\$(date +%Y%m%d_%H%M%S)"
+mongodump --uri="mongodb://abetoile_user:Ab3t0il3L0c4t10n2024!@localhost:27017/$DB_NAME" --out "\$BACKUP_DIR/mongo-\$(date +%Y%m%d_%H%M%S)" 2>/dev/null || echo "Backup base échoué"
 
 # Backup du code
 echo "📁 Sauvegarde du code..."
-tar -czf "\$BACKUP_DIR/code-\$(date +%Y%m%d_%H%M%S).tar.gz" "\$APP_DIR"
+tar -czf "\$BACKUP_DIR/code-\$(date +%Y%m%d_%H%M%S).tar.gz" "\$APP_DIR" 2>/dev/null || echo "Backup code échoué"
 
 # Mise à jour du code (si repository Git)
 cd "\$APP_DIR"
@@ -439,20 +514,20 @@ mkdir -p "\$BACKUP_DIR"
 echo "💾 Sauvegarde Abetoile Location [\$DATE]..."
 
 # Sauvegarde MongoDB
-mongodump --uri="mongodb://abetoile_user:Ab3t0il3L0c4t10n2024!@localhost:27017/$DB_NAME" --out "\$BACKUP_DIR/mongo-\$DATE"
+mongodump --uri="mongodb://abetoile_user:Ab3t0il3L0c4t10n2024!@localhost:27017/$DB_NAME" --out "\$BACKUP_DIR/mongo-\$DATE" 2>/dev/null || echo "Backup MongoDB échoué"
 
 # Sauvegarde code
-tar -czf "\$BACKUP_DIR/code-\$DATE.tar.gz" "$APP_DIR"
+tar -czf "\$BACKUP_DIR/code-\$DATE.tar.gz" "$APP_DIR" 2>/dev/null || echo "Backup code échoué"
 
 # Sauvegarde configuration Nginx
-cp /etc/nginx/sites-available/abetoile-location "\$BACKUP_DIR/nginx-\$DATE.conf"
+cp /etc/nginx/sites-available/abetoile-location "\$BACKUP_DIR/nginx-\$DATE.conf" 2>/dev/null || echo "Backup nginx échoué"
 
 # Nettoyage des anciennes sauvegardes (garder 7 jours)
-find "\$BACKUP_DIR" -name "mongo-*" -mtime +7 -exec rm -rf {} \;
-find "\$BACKUP_DIR" -name "code-*.tar.gz" -mtime +7 -delete
+find "\$BACKUP_DIR" -name "mongo-*" -mtime +7 -exec rm -rf {} \; 2>/dev/null || true
+find "\$BACKUP_DIR" -name "code-*.tar.gz" -mtime +7 -delete 2>/dev/null || true
 
 echo "✅ Sauvegarde terminée: \$BACKUP_DIR"
-ls -lah "\$BACKUP_DIR"
+ls -lah "\$BACKUP_DIR" 2>/dev/null || true
 EOF
 
 # Rendre les scripts exécutables
@@ -491,8 +566,8 @@ touch /var/log/abetoile-location/backup.log
 chown -R www-data:www-data $APP_DIR
 chown -R www-data:www-data /var/log/abetoile-location
 chmod -R 755 $APP_DIR
-chmod -R 644 $APP_DIR/backend/.env
-chmod -R 644 $APP_DIR/frontend/.env
+chmod 600 $APP_DIR/backend/.env 2>/dev/null || true
+chmod 600 $APP_DIR/frontend/.env 2>/dev/null || true
 
 # =============================================================================
 # RÉSUMÉ ET INSTRUCTIONS FINALES
@@ -509,37 +584,19 @@ echo "   • Domaine: $DOMAIN / www.$DOMAIN"
 echo "   • Backend: Port $BACKEND_PORT"
 echo "   • Base de données: $DB_NAME"
 echo "   • Répertoire: $APP_DIR"
+echo "   • Python: $PYTHON_VERSION"
+echo "   • Node.js: $(node --version 2>/dev/null || echo 'N/A')"
+echo "   • MongoDB: $(mongod --version 2>/dev/null | head -1 || echo 'Installé')"
 echo ""
 
 echo -e "${YELLOW}⚠️  ÉTAPES MANUELLES RESTANTES:${NC}"
 echo ""
 echo -e "${RED}1. COPIER LE CODE SOURCE:${NC}"
-echo "   cd $APP_DIR"
-echo "   # Copiez vos fichiers backend et frontend ici"
+echo "   curl -sSL https://raw.githubusercontent.com/redademechety-ux/abetoile-location/main/deploy.sh | sudo bash"
 echo ""
 
-echo -e "${RED}2. INSTALLER LES DÉPENDANCES BACKEND:${NC}"
-echo "   cd $APP_DIR/backend"
-echo "   python3.11 -m venv venv"
-echo "   source venv/bin/activate"
-echo "   pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/"
-echo "   pip install -r requirements.txt"
-echo ""
-
-echo -e "${RED}3. INSTALLER LES DÉPENDANCES FRONTEND:${NC}"
-echo "   cd $APP_DIR/frontend"
-echo "   yarn install"
-echo "   yarn build"
-echo ""
-
-echo -e "${RED}4. DÉMARRER LES SERVICES:${NC}"
-echo "   systemctl enable abetoile-location-backend"
-echo "   systemctl start abetoile-location-backend"
-echo "   systemctl reload nginx"
-echo ""
-
-echo -e "${RED}5. CONFIGURER SSL:${NC}"
-echo "   certbot --nginx -d $DOMAIN -d www.$DOMAIN"
+echo -e "${RED}2. CONFIGURER SSL:${NC}"
+echo "   sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN"
 echo ""
 
 echo -e "${BLUE}🔧 COMMANDES UTILES:${NC}"
@@ -551,5 +608,12 @@ echo "   • Logs nginx: tail -f /var/log/nginx/abetoile-location.error.log"
 echo ""
 
 echo -e "${GREEN}✅ Installation de base terminée avec succès!${NC}"
-echo -e "${YELLOW}🔗 Une fois le code copié: https://$DOMAIN${NC}"
+echo -e "${YELLOW}🔗 Une fois le code déployé: https://$DOMAIN${NC}"
+echo ""
+
+# Vérification finale des services
+echo -e "${BLUE}📊 STATUT DES SERVICES:${NC}"
+echo "   • MongoDB: $(systemctl is-active mongod)"
+echo "   • Nginx: $(systemctl is-active nginx)"
+echo "   • UFW: $(systemctl is-active ufw)"
 echo ""

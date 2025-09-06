@@ -27,7 +27,7 @@ const Navigation = ({ onLogout }) => {
       <div className="nav-content">
         <Link to="/" className="logo">
           <Car className="inline mr-2" size={24} />
-          AutoPro Rental
+          Abetoile Location
         </Link>
         
         <ul className="nav-links">

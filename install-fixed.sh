@@ -411,25 +411,15 @@ try {
 log_success "Base de données configurée"
 
 # =============================================================================
-# CONFIGURATION APPLICATION (AVEC ENVIRONNEMENT VIRTUEL PYTHON)
+# CONFIGURATION APPLICATION (PRÊT POUR DÉPLOIEMENT)
 # =============================================================================
-log_info "⚙️ Configuration application avec environnement virtuel..."
+log_info "⚙️ Configuration application (prêt pour déploiement du code)..."
 
 # Clé secrète
 SECRET_KEY=$(openssl rand -hex 32)
 
-# Créer environnement virtuel Python pour le backend
-log_info "Création de l'environnement virtuel Python..."
-cd $APP_DIR/backend
-sudo -u www-data python3 -m venv venv
-
-# Vérifier que l'environnement virtuel fonctionne
-if [[ ! -f "$APP_DIR/backend/venv/bin/activate" ]]; then
-    log_error "Échec création environnement virtuel"
-    exit 1
-fi
-
-log_success "Environnement virtuel Python créé"
+log_info "Structure prête pour le déploiement du code source"
+log_warning "L'environnement virtuel Python sera créé lors du déploiement du code"
 
 # Backend .env
 cat > $APP_DIR/backend/.env << EOF

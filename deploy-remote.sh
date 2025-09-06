@@ -228,7 +228,7 @@ sudo -u www-data bash -c "cd $APP_DIR/backend && source venv/bin/activate && pyt
 log_info "Installation d'emergentintegrations..."
 sudo -u www-data bash -c "cd $APP_DIR/backend && source venv/bin/activate && pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ --no-warn-script-location --disable-pip-version-check"
 
-log_info "Installation des dépendances depuis requirements.txt..."
+log_info "Installation des dépendances depuis requirements.txt (corrigé)..."
 sudo -u www-data bash -c "cd $APP_DIR/backend && source venv/bin/activate && pip install -r requirements.txt --no-warn-script-location --disable-pip-version-check"
 
 log_success "Dépendances Python installées"

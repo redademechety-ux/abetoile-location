@@ -197,7 +197,7 @@ class Invoice(BaseModel):
 
 class Settings(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    company_name: str = "AutoPro Rental"
+    company_name: str = "Abetoile Location"
     company_address: str = ""
     company_phone: str = ""
     company_email: str = ""

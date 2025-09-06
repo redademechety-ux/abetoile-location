@@ -109,23 +109,44 @@ fi
 log_success "Branding mis à jour pour Abetoile Location"
 
 # =============================================================================
-# INSTALLATION DES DÉPENDANCES BACKEND (ENVIRONNEMENT VIRTUEL)
+# INSTALLATION DES DÉPENDANCES BACKEND (ENVIRONNEMENT VIRTUEL SÉCURISÉ)
 # =============================================================================
 log_info "🐍 Installation des dépendances Python dans l'environnement virtuel..."
 
 cd $APP_DIR/backend
 
-# Utiliser l'environnement virtuel créé par install-final.sh
+# Créer l'environnement virtuel si il n'existe pas
 if [ ! -d "venv" ]; then
     log_info "Création de l'environnement virtuel Python..."
     sudo -u www-data python3 -m venv venv
+    
+    # Vérifier que l'environnement virtuel fonctionne
+    if [[ ! -f "$APP_DIR/backend/venv/bin/activate" ]]; then
+        log_error "Échec création environnement virtuel"
+        exit 1
+    fi
+    log_success "Environnement virtuel Python créé"
+else
+    log_info "Environnement virtuel existant trouvé"
 fi
 
-# Activer et installer les dépendances dans l'environnement virtuel
-log_info "Installation des dépendances dans l'environnement virtuel..."
-sudo -u www-data bash -c "source venv/bin/activate && pip install --upgrade pip"
-sudo -u www-data bash -c "source venv/bin/activate && pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/"
-sudo -u www-data bash -c "source venv/bin/activate && pip install -r requirements.txt"
+# Vérifier que requirements.txt existe
+if [ ! -f "requirements.txt" ]; then
+    log_error "Fichier requirements.txt manquant dans $APP_DIR/backend/"
+    log_info "Contenu du répertoire backend :"
+    ls -la $APP_DIR/backend/
+    exit 1
+fi
+
+# Installer les dépendances dans l'environnement virtuel avec les bonnes permissions
+log_info "Mise à jour de pip dans l'environnement virtuel..."
+sudo -u www-data bash -c "cd $APP_DIR/backend && source venv/bin/activate && python -m pip install --upgrade pip --no-warn-script-location"
+
+log_info "Installation d'emergentintegrations..."
+sudo -u www-data bash -c "cd $APP_DIR/backend && source venv/bin/activate && pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ --no-warn-script-location"
+
+log_info "Installation des dépendances depuis requirements.txt..."
+sudo -u www-data bash -c "cd $APP_DIR/backend && source venv/bin/activate && pip install -r requirements.txt --no-warn-script-location"
 
 log_success "Dépendances Python installées dans l'environnement virtuel"
 

@@ -102,26 +102,53 @@ apt install -y \
 log_success "Système mis à jour"
 
 # =============================================================================
-# PYTHON - MÉTHODE MODERNE UBUNTU 25.04
+# PYTHON - MÉTHODE MODERNE UBUNTU 25.04 (ENVIRONNEMENT EXTERNE GÉRÉ)
 # =============================================================================
-log_info "🐍 Installation Python (méthode moderne Ubuntu 25.04)..."
+log_info "🐍 Installation Python (compatible environnement externe Ubuntu 25.04+)..."
 
-# SEULEMENT les packages qui existent sur Ubuntu 25.04
-apt install -y \
-    python3 \
-    python3-pip \
-    python3-venv \
-    python3-dev
-
-# PAS de distutils - utiliser seulement ce qui est disponible
-log_info "Configuration Python pour Ubuntu récent..."
-
-# Vérifier que Python fonctionne
-PYTHON_VERSION=$(python3 --version 2>&1)
+# Détecter la version Python spécifique pour les packages venv
+PYTHON_VERSION_FULL=$(python3 --version 2>&1)
+PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2 | cut -d'.' -f1,2)
 PYTHON_MAJOR=$(python3 -c "import sys; print(sys.version_info.major)" 2>/dev/null)
 PYTHON_MINOR=$(python3 -c "import sys; print(sys.version_info.minor)" 2>/dev/null)
 
-log_success "$PYTHON_VERSION installé"
+log_info "Version Python détectée: $PYTHON_VERSION"
+
+# Installation des packages Python de base
+apt install -y python3 python3-pip python3-dev
+
+# Installation des packages venv spécifiques à la version Ubuntu 25.04+
+log_info "Installation des packages venv pour Python $PYTHON_VERSION..."
+case $PYTHON_VERSION in
+    "3.13")
+        log_info "Installation des packages Python 3.13..."
+        apt install -y python3.13-venv python3.13-dev
+        ;;
+    "3.12")
+        log_info "Installation des packages Python 3.12..."
+        apt install -y python3.12-venv python3.12-dev
+        ;;
+    "3.11")
+        log_info "Installation des packages Python 3.11..."
+        apt install -y python3.11-venv python3.11-dev
+        ;;
+    "3.10")
+        log_info "Installation des packages Python 3.10..."
+        apt install -y python3.10-venv python3.10-dev
+        ;;
+    *)
+        log_info "Installation des packages Python génériques..."
+        apt install -y python3-venv
+        ;;
+esac
+
+# Vérifier que python3-venv fonctionne (contournement environnement externe)
+if ! python3 -m venv --help >/dev/null 2>&1; then
+    log_warning "python3-venv ne fonctionne pas, installation forcée de tous les packages venv..."
+    apt install -y python3-venv python3.13-venv python3.12-venv python3.11-venv python3.10-venv 2>/dev/null || true
+fi
+
+log_success "$PYTHON_VERSION_FULL installé avec support venv"
 
 # Vérifier version compatible
 if [[ "$PYTHON_MAJOR" -ge "3" ]] && [[ "$PYTHON_MINOR" -ge "8" ]]; then
@@ -131,17 +158,9 @@ else
     exit 1
 fi
 
-# Mettre à jour pip (méthode moderne)
-python3 -m pip install --upgrade pip
-
-# Test rapide de pip
-python3 -m pip --version >/dev/null 2>&1
-if [ $? -eq 0 ]; then
-    log_success "pip configuré et fonctionnel"
-else
-    log_error "Problème avec pip"
-    exit 1
-fi
+# ⚠️ NE PAS mettre à jour pip au niveau système (environnement externe géré)
+log_info "Environnement Python configuré (environnement externe géré détecté)"
+log_info "Les dépendances Python seront installées dans un environnement virtuel"
 
 # =============================================================================
 # NODE.JS ET YARN

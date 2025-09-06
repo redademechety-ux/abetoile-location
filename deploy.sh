@@ -226,11 +226,17 @@ cat > package.json << 'EOF'
 }
 EOF
 
-# Installer les dépendances
-yarn install
-
-# Builder pour production
-yarn build
+# Installer les dépendances avec gestion des erreurs
+if command -v yarn &> /dev/null; then
+    log_info "Installation avec Yarn..."
+    sudo -u www-data yarn install --frozen-lockfile --network-timeout 600000
+    # Builder pour production
+    sudo -u www-data NODE_OPTIONS="--max-old-space-size=4096" yarn build
+else
+    log_info "Yarn non disponible, utilisation de npm..."
+    sudo -u www-data npm install
+    sudo -u www-data npm run build
+fi
 
 log_success "Frontend buildé pour production"
 

@@ -1,4 +1,4 @@
-# 🚗 **Abetoile Rental Management System**
+# 🚗 **Abetoile Location Management System**
 
 Une application complète de gestion de location de véhicules développée avec React, FastAPI, et MongoDB. Système intelligent avec génération PDF automatique et comptabilité française intégrée.
 
@@ -80,13 +80,13 @@ Une application complète de gestion de location de véhicules développée avec
 
 ```bash
 # Télécharger et exécuter le script d'installation
-curl -sSL https://raw.githubusercontent.com/VOTRE-USERNAME/abetoile-rental/main/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/VOTRE-USERNAME/abetoile-location/main/install.sh | sudo bash
 
 # Déployer le code source
-curl -sSL https://raw.githubusercontent.com/VOTRE-USERNAME/abetoile-rental/main/deploy.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/VOTRE-USERNAME/abetoile-location/main/deploy.sh | sudo bash
 
 # Configurer SSL
-sudo certbot --nginx -d abetoile-rental.com -d www.abetoile-rental.com
+sudo certbot --nginx -d abetoile-location.fr -d www.abetoile-location.fr
 ```
 
 ### Configuration Manuelle
@@ -116,16 +116,16 @@ yarn build
 
 ### Variables d'environnement Backend (.env)
 ```bash
-MONGO_URL="mongodb://abetoile_user:PASSWORD@localhost:27017/abetoile_rental_prod"
-DB_NAME="abetoile_rental_prod"
-CORS_ORIGINS="https://abetoile-rental.com,https://www.abetoile-rental.com"
+MONGO_URL="mongodb://abetoile_user:PASSWORD@localhost:27017/abetoile_location_prod"
+DB_NAME="abetoile_location_prod"
+CORS_ORIGINS="https://abetoile-location.fr,https://www.abetoile-location.fr"
 SECRET_KEY="votre-clé-secrète-32-caractères"
 EMERGENT_LLM_KEY="sk-emergent-c68C3249e6154EcE22"
 ```
 
 ### Variables d'environnement Frontend (.env)
 ```bash
-REACT_APP_BACKEND_URL=https://abetoile-rental.com
+REACT_APP_BACKEND_URL=https://abetoile-location.fr
 ```
 
 ## 🔧 **Commandes Utiles**
@@ -133,32 +133,32 @@ REACT_APP_BACKEND_URL=https://abetoile-rental.com
 ### Gestion des services
 ```bash
 # Redémarrer l'application
-abetoile-restart
+abetoile-location-restart
 
 # Déployer une mise à jour
-abetoile-deploy
+abetoile-location-deploy
 
 # Effectuer une sauvegarde
-abetoile-backup
+abetoile-location-backup
 
 # Voir les logs
-journalctl -u abetoile-backend -f
-tail -f /var/log/nginx/abetoile-rental.error.log
+journalctl -u abetoile-location-backend -f
+tail -f /var/log/nginx/abetoile-location.error.log
 ```
 
 ### Maintenance MongoDB
 ```bash
 # Sauvegarde manuelle
-mongodump --uri="mongodb://abetoile_user:PASSWORD@localhost:27017/abetoile_rental_prod" --out backup/
+mongodump --uri="mongodb://abetoile_user:PASSWORD@localhost:27017/abetoile_location_prod" --out backup/
 
 # Restauration
-mongorestore --uri="mongodb://abetoile_user:PASSWORD@localhost:27017/abetoile_rental_prod" backup/abetoile_rental_prod/
+mongorestore --uri="mongodb://abetoile_user:PASSWORD@localhost:27017/abetoile_location_prod" backup/abetoile_location_prod/
 ```
 
 ## 📋 **Structure du Projet**
 
 ```
-abetoile-rental/
+abetoile-location/
 ├── backend/
 │   ├── server.py              # API FastAPI principale
 │   ├── pdf_generator.py       # Génération PDF avec IA
@@ -181,7 +181,7 @@ abetoile-rental/
 ## 🎯 **Utilisation**
 
 ### Premier démarrage
-1. Accédez à https://abetoile-rental.com
+1. Accédez à https://abetoile-location.fr
 2. Créez un compte administrateur
 3. Configurez les paramètres de l'entreprise
 4. Ajoutez vos premiers clients et véhicules
@@ -218,7 +218,7 @@ abetoile-rental/
 
 **Backend ne démarre pas :**
 ```bash
-journalctl -u abetoile-backend -n 50
+journalctl -u abetoile-location-backend -n 50
 ```
 
 **Erreur MongoDB :**
@@ -236,7 +236,7 @@ nginx -t
 ### Contacts
 - **Documentation** : Ce README
 - **Issues** : GitHub Issues
-- **Logs** : `/var/log/abetoile-rental/`
+- **Logs** : `/var/log/abetoile-location/`
 
 ## 📄 **Licence**
 
@@ -254,4 +254,4 @@ Développé avec ❤️ pour une gestion professionnelle de location de véhicul
 
 **Version** : 1.0.0  
 **Dernière mise à jour** : Décembre 2024  
-**Domaine** : https://abetoile-rental.com
+**Domaine** : https://abetoile-location.fr

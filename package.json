@@ -1,9 +1,9 @@
 {
-  "name": "abetoile-rental-management",
+  "name": "abetoile-location-management",
   "version": "1.0.0",
   "description": "Système complet de gestion de location de véhicules avec IA intégrée",
   "keywords": [
-    "rental",
+    "location",
     "vehicle-management",
     "react",
     "fastapi",
@@ -13,19 +13,19 @@
     "ai-powered"
   ],
   "author": {
-    "name": "Abetoile Rental",
-    "email": "contact@abetoile-rental.com",
-    "url": "https://abetoile-rental.com"
+    "name": "Abetoile Location",
+    "email": "contact@abetoile-location.fr",
+    "url": "https://abetoile-location.fr"
   },
   "license": "PROPRIETARY",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/VOTRE-USERNAME/abetoile-rental.git"
+    "url": "git+https://github.com/VOTRE-USERNAME/abetoile-location.git"
   },
   "bugs": {
-    "url": "https://github.com/VOTRE-USERNAME/abetoile-rental/issues"
+    "url": "https://github.com/VOTRE-USERNAME/abetoile-location/issues"
   },
-  "homepage": "https://abetoile-rental.com",
+  "homepage": "https://abetoile-location.fr",
   "scripts": {
     "install-server": "chmod +x install.sh && sudo ./install.sh",
     "deploy": "chmod +x deploy.sh && sudo ./deploy.sh",
@@ -33,10 +33,10 @@
     "start:backend": "cd backend && source venv/bin/activate && python server.py",
     "build": "cd frontend && yarn build",
     "test": "cd frontend && yarn test",
-    "backup": "sudo abetoile-backup",
-    "restart-services": "sudo abetoile-restart",
-    "logs:backend": "sudo journalctl -u abetoile-backend -f",
-    "logs:nginx": "sudo tail -f /var/log/nginx/abetoile-rental.error.log"
+    "backup": "sudo abetoile-location-backup",
+    "restart-services": "sudo abetoile-location-restart",
+    "logs:backend": "sudo journalctl -u abetoile-location-backend -f",
+    "logs:nginx": "sudo tail -f /var/log/nginx/abetoile-location.error.log"
   },
   "engines": {
     "node": ">=18.0.0",
@@ -58,9 +58,9 @@
     "README.md"
   ],
   "config": {
-    "domain": "abetoile-rental.com",
+    "domain": "abetoile-location.fr",
     "backend_port": "8001",
-    "database": "abetoile_rental_prod"
+    "database": "abetoile_location_prod"
   },
   "dependencies": {
     "backend": {

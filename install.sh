@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # =============================================================================
-# 🚀 SCRIPT D'INSTALLATION AUTOMATIQUE - AutoPro Rental Management
+# 🚀 SCRIPT D'INSTALLATION AUTOMATIQUE - Abetoile Location Management
 # =============================================================================
-# Domaine: abetoile-rental.com / www.abetoile-rental.com
+# Domaine: abetoile-location.fr / www.abetoile-location.fr
 # Port Backend: 8001
 # Serveur: Multi-sites
 # =============================================================================
@@ -18,10 +18,10 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-DOMAIN="abetoile-rental.com"
-APP_DIR="/var/www/abetoile-rental"
+DOMAIN="abetoile-location.fr"
+APP_DIR="/var/www/abetoile-location"
 BACKEND_PORT="8001"
-DB_NAME="abetoile_rental_prod"
+DB_NAME="abetoile_location_prod"
 
 # Fonctions utilitaires
 log_info() {
@@ -166,12 +166,12 @@ fi
 
 # Créer les répertoires
 mkdir -p $APP_DIR
-mkdir -p /var/log/abetoile-rental
-mkdir -p /var/backups/abetoile-rental
+mkdir -p /var/log/abetoile-location
+mkdir -p /var/backups/abetoile-location
 
 # Permissions
 chown -R www-data:www-data $APP_DIR
-chown -R www-data:www-data /var/log/abetoile-rental
+chown -R www-data:www-data /var/log/abetoile-location
 
 log_success "Répertoires créés"
 
@@ -183,7 +183,7 @@ log_info "📥 Téléchargement du code source..."
 cd $APP_DIR
 
 # Si vous avez un repository GitHub, décommentez cette ligne:
-# git clone https://github.com/VOTRE-USERNAME/abetoile-rental.git .
+# git clone https://github.com/VOTRE-USERNAME/abetoile-location.git .
 
 # Sinon, créer la structure de base
 mkdir -p backend frontend
@@ -200,7 +200,7 @@ mongosh --eval "
 use $DB_NAME;
 db.createUser({
   user: 'abetoile_user',
-  pwd: 'Ab3t0il3R3nt4l2024!',
+  pwd: 'Ab3t0il3L0c4t10n2024!',
   roles: [
     { role: 'readWrite', db: '$DB_NAME' }
   ]
@@ -241,7 +241,7 @@ log_info "⚙️ Création des fichiers de configuration..."
 
 # Backend .env
 cat > $APP_DIR/backend/.env << EOF
-MONGO_URL="mongodb://abetoile_user:Ab3t0il3R3nt4l2024!@localhost:27017/$DB_NAME"
+MONGO_URL="mongodb://abetoile_user:Ab3t0il3L0c4t10n2024!@localhost:27017/$DB_NAME"
 DB_NAME="$DB_NAME"
 CORS_ORIGINS="https://$DOMAIN,https://www.$DOMAIN,http://localhost:3000"
 SECRET_KEY="$(openssl rand -hex 32)"
@@ -254,9 +254,9 @@ REACT_APP_BACKEND_URL=https://$DOMAIN
 EOF
 
 # Service systemd pour le backend
-cat > /etc/systemd/system/abetoile-backend.service << EOF
+cat > /etc/systemd/system/abetoile-location-backend.service << EOF
 [Unit]
-Description=Abetoile Rental Backend
+Description=Abetoile Location Backend
 After=network.target mongod.service
 Requires=mongod.service
 
@@ -283,8 +283,8 @@ log_success "Fichiers de configuration créés"
 # =============================================================================
 log_info "🌐 Configuration Nginx multi-sites..."
 
-# Configuration pour abetoile-rental.com
-cat > /etc/nginx/sites-available/abetoile-rental << EOF
+# Configuration pour abetoile-location.fr
+cat > /etc/nginx/sites-available/abetoile-location << EOF
 server {
     listen 80;
     server_name $DOMAIN www.$DOMAIN;
@@ -297,8 +297,8 @@ server {
     index index.html;
 
     # Logs spécifiques
-    access_log /var/log/nginx/abetoile-rental.access.log;
-    error_log /var/log/nginx/abetoile-rental.error.log;
+    access_log /var/log/nginx/abetoile-location.access.log;
+    error_log /var/log/nginx/abetoile-location.error.log;
 
     # Gestion des routes React (SPA)
     location / {
@@ -345,7 +345,7 @@ server {
 EOF
 
 # Activer le site
-ln -sf /etc/nginx/sites-available/abetoile-rental /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/abetoile-location /etc/nginx/sites-enabled/
 
 # Tester la configuration
 nginx -t
@@ -372,28 +372,28 @@ log_warning "   sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN"
 log_info "🔧 Création des scripts de maintenance..."
 
 # Script de redémarrage
-cat > /usr/local/bin/abetoile-restart << 'EOF'
+cat > /usr/local/bin/abetoile-location-restart << 'EOF'
 #!/bin/bash
-echo "🔄 Redémarrage Abetoile Rental..."
-systemctl restart abetoile-backend
+echo "🔄 Redémarrage Abetoile Location..."
+systemctl restart abetoile-location-backend
 systemctl reload nginx
-systemctl status abetoile-backend
+systemctl status abetoile-location-backend
 echo "✅ Redémarrage terminé!"
 EOF
 
 # Script de déploiement
-cat > /usr/local/bin/abetoile-deploy << EOF
+cat > /usr/local/bin/abetoile-location-deploy << EOF
 #!/bin/bash
 set -e
 
 APP_DIR="$APP_DIR"
-BACKUP_DIR="/var/backups/abetoile-rental"
+BACKUP_DIR="/var/backups/abetoile-location"
 
-echo "🚀 Déploiement Abetoile Rental..."
+echo "🚀 Déploiement Abetoile Location..."
 
 # Backup de la base de données
 echo "💾 Sauvegarde de la base de données..."
-mongodump --uri="mongodb://abetoile_user:Ab3t0il3R3nt4l2024!@localhost:27017/$DB_NAME" --out "\$BACKUP_DIR/mongo-\$(date +%Y%m%d_%H%M%S)"
+mongodump --uri="mongodb://abetoile_user:Ab3t0il3L0c4t10n2024!@localhost:27017/$DB_NAME" --out "\$BACKUP_DIR/mongo-\$(date +%Y%m%d_%H%M%S)"
 
 # Backup du code
 echo "📁 Sauvegarde du code..."
@@ -412,7 +412,7 @@ cd "\$APP_DIR/backend"
 if [ -f "venv/bin/activate" ]; then
     source venv/bin/activate
     pip install -r requirements.txt
-    systemctl restart abetoile-backend
+    systemctl restart abetoile-location-backend
 fi
 
 # Frontend
@@ -425,27 +425,27 @@ if [ -f "package.json" ]; then
 fi
 
 echo "✅ Déploiement terminé!"
-systemctl status abetoile-backend
+systemctl status abetoile-location-backend
 EOF
 
 # Script de sauvegarde
-cat > /usr/local/bin/abetoile-backup << EOF
+cat > /usr/local/bin/abetoile-location-backup << EOF
 #!/bin/bash
-BACKUP_DIR="/var/backups/abetoile-rental"
+BACKUP_DIR="/var/backups/abetoile-location"
 DATE=\$(date +%Y%m%d_%H%M%S)
 
 mkdir -p "\$BACKUP_DIR"
 
-echo "💾 Sauvegarde Abetoile Rental [\$DATE]..."
+echo "💾 Sauvegarde Abetoile Location [\$DATE]..."
 
 # Sauvegarde MongoDB
-mongodump --uri="mongodb://abetoile_user:Ab3t0il3R3nt4l2024!@localhost:27017/$DB_NAME" --out "\$BACKUP_DIR/mongo-\$DATE"
+mongodump --uri="mongodb://abetoile_user:Ab3t0il3L0c4t10n2024!@localhost:27017/$DB_NAME" --out "\$BACKUP_DIR/mongo-\$DATE"
 
 # Sauvegarde code
 tar -czf "\$BACKUP_DIR/code-\$DATE.tar.gz" "$APP_DIR"
 
 # Sauvegarde configuration Nginx
-cp /etc/nginx/sites-available/abetoile-rental "\$BACKUP_DIR/nginx-\$DATE.conf"
+cp /etc/nginx/sites-available/abetoile-location "\$BACKUP_DIR/nginx-\$DATE.conf"
 
 # Nettoyage des anciennes sauvegardes (garder 7 jours)
 find "\$BACKUP_DIR" -name "mongo-*" -mtime +7 -exec rm -rf {} \;
@@ -456,9 +456,9 @@ ls -lah "\$BACKUP_DIR"
 EOF
 
 # Rendre les scripts exécutables
-chmod +x /usr/local/bin/abetoile-restart
-chmod +x /usr/local/bin/abetoile-deploy
-chmod +x /usr/local/bin/abetoile-backup
+chmod +x /usr/local/bin/abetoile-location-restart
+chmod +x /usr/local/bin/abetoile-location-deploy
+chmod +x /usr/local/bin/abetoile-location-backup
 
 log_success "Scripts de maintenance créés"
 
@@ -468,8 +468,8 @@ log_success "Scripts de maintenance créés"
 log_info "⏰ Configuration des tâches automatiques..."
 
 # Sauvegarde quotidienne à 2h du matin
-cat > /etc/cron.d/abetoile-backup << 'EOF'
-0 2 * * * root /usr/local/bin/abetoile-backup >> /var/log/abetoile-rental/backup.log 2>&1
+cat > /etc/cron.d/abetoile-location-backup << 'EOF'
+0 2 * * * root /usr/local/bin/abetoile-location-backup >> /var/log/abetoile-location/backup.log 2>&1
 EOF
 
 log_success "Tâches cron configurées"
@@ -483,13 +483,13 @@ log_info "🔧 Finalisation de l'installation..."
 systemctl daemon-reload
 
 # Créer les répertoires de logs
-mkdir -p /var/log/abetoile-rental
-touch /var/log/abetoile-rental/app.log
-touch /var/log/abetoile-rental/backup.log
+mkdir -p /var/log/abetoile-location
+touch /var/log/abetoile-location/app.log
+touch /var/log/abetoile-location/backup.log
 
 # Permissions finales
 chown -R www-data:www-data $APP_DIR
-chown -R www-data:www-data /var/log/abetoile-rental
+chown -R www-data:www-data /var/log/abetoile-location
 chmod -R 755 $APP_DIR
 chmod -R 644 $APP_DIR/backend/.env
 chmod -R 644 $APP_DIR/frontend/.env
@@ -500,7 +500,7 @@ chmod -R 644 $APP_DIR/frontend/.env
 clear
 echo -e "${GREEN}"
 echo "================================================================================"
-echo "🎉 INSTALLATION TERMINÉE - ABETOILE RENTAL MANAGEMENT"
+echo "🎉 INSTALLATION TERMINÉE - ABETOILE LOCATION MANAGEMENT"
 echo "================================================================================"
 echo -e "${NC}"
 
@@ -533,8 +533,8 @@ echo "   yarn build"
 echo ""
 
 echo -e "${RED}4. DÉMARRER LES SERVICES:${NC}"
-echo "   systemctl enable abetoile-backend"
-echo "   systemctl start abetoile-backend"
+echo "   systemctl enable abetoile-location-backend"
+echo "   systemctl start abetoile-location-backend"
 echo "   systemctl reload nginx"
 echo ""
 
@@ -543,11 +543,11 @@ echo "   certbot --nginx -d $DOMAIN -d www.$DOMAIN"
 echo ""
 
 echo -e "${BLUE}🔧 COMMANDES UTILES:${NC}"
-echo "   • Redémarrer: abetoile-restart"
-echo "   • Déployer: abetoile-deploy"
-echo "   • Sauvegarder: abetoile-backup"
-echo "   • Logs backend: journalctl -u abetoile-backend -f"
-echo "   • Logs nginx: tail -f /var/log/nginx/abetoile-rental.error.log"
+echo "   • Redémarrer: abetoile-location-restart"
+echo "   • Déployer: abetoile-location-deploy"
+echo "   • Sauvegarder: abetoile-location-backup"
+echo "   • Logs backend: journalctl -u abetoile-location-backend -f"
+echo "   • Logs nginx: tail -f /var/log/nginx/abetoile-location.error.log"
 echo ""
 
 echo -e "${GREEN}✅ Installation de base terminée avec succès!${NC}"

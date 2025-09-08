@@ -101,3 +101,111 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Correction de 3 bugs critiques dans l'application Abetoile Location : 1) La visualisation PDF de documents véhicules ne fonctionne pas, 2) La création de commandes ne fonctionne pas, 3) Les boutons de visualisation dans les tables ne fonctionnent pas. Intégrer également les fonctionnalités manquantes Mailgun et INSEE/Infogreffe."
+
+backend:
+  - task: "Fix PDF document viewing"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "user"
+        -comment: "User reported PDF viewing not working in vehicle forms"
+
+  - task: "Fix order creation API endpoints"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "user"
+        -comment: "User reported order creation is completely broken"
+
+  - task: "Implement Mailgun integration"
+    implemented: false
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Mailgun integration is pending - needs API key configuration"
+
+  - task: "Implement INSEE/Infogreffe API integration"
+    implemented: false
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "INSEE/Infogreffe API integration is pending for client data validation"
+
+frontend:
+  - task: "Fix PDF document viewing UI"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/components/VehicleDocuments.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "user"
+        -comment: "PDF viewing functionality implemented but not working properly"
+
+  - task: "Fix table visualization buttons"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/components/OrderList.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "user"
+        -comment: "Table visualization buttons have no onClick handlers"
+
+  - task: "Create OrderForm component"
+    implemented: false
+    working: false
+    file: "/app/frontend/src/components/OrderForm.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "OrderForm component is missing - referenced in App.js but doesn't exist"
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Fix PDF document viewing"
+    - "Create OrderForm component"
+    - "Fix table visualization buttons"
+    - "Fix order creation API endpoints"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    -agent: "main"
+    -message: "Initialized testing data structure. Identified 3 critical bugs reported by user: PDF viewing, order creation, and table buttons. Also identified missing OrderForm component and pending integrations (Mailgun, INSEE/Infogreffe). Will start with critical fixes first."

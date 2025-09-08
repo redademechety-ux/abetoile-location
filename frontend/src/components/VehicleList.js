@@ -154,6 +154,7 @@ const VehicleList = () => {
                             <Edit size={16} />
                           </Link>
                           <button
+                            onClick={() => alert(`Détails du véhicule\n\nType: ${getVehicleTypeLabel(vehicle.type)}\nVéhicule: ${vehicle.brand} ${vehicle.model}\nImmatriculation: ${vehicle.license_plate}\nPremière mise en circulation: ${new Date(vehicle.first_registration).toLocaleDateString('fr-FR')}\nContrôle technique: ${new Date(vehicle.technical_control_expiry).toLocaleDateString('fr-FR')}\nAssurance: ${vehicle.insurance_company}\nTarif: ${vehicle.daily_rate.toFixed(2)}€/jour\nDisponibilité: ${vehicle.is_available ? 'Disponible' : 'Indisponible'}`)}
                             className="btn btn-sm btn-secondary"
                             title="Voir détails"
                           >

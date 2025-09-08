@@ -638,6 +638,280 @@ class AutoProAPITester:
             
         return success
 
+    # NEW INTEGRATION TESTS FOR ENHANCED FEATURES
+    
+    def test_validate_business_siren(self):
+        """Test business validation with valid SIREN"""
+        validation_data = {
+            "identifier": "732829320"  # Google France SIREN
+        }
+        success, response = self.run_test(
+            "Validate Business - Valid SIREN",
+            "POST",
+            "validate/business",
+            200,
+            data=validation_data
+        )
+        
+        if success:
+            print(f"   Validation result: {response.get('is_valid', False)}")
+            print(f"   Identifier type: {response.get('identifier_type', 'Unknown')}")
+            if response.get('company_info'):
+                print(f"   Company name: {response['company_info'].get('denomination', 'N/A')}")
+        
+        return success
+
+    def test_validate_business_siret(self):
+        """Test business validation with valid SIRET"""
+        validation_data = {
+            "identifier": "73282932000074"  # Google France SIRET
+        }
+        success, response = self.run_test(
+            "Validate Business - Valid SIRET",
+            "POST",
+            "validate/business",
+            200,
+            data=validation_data
+        )
+        
+        if success:
+            print(f"   Validation result: {response.get('is_valid', False)}")
+            print(f"   Identifier type: {response.get('identifier_type', 'Unknown')}")
+            if response.get('company_info'):
+                print(f"   Company name: {response['company_info'].get('denomination', 'N/A')}")
+        
+        return success
+
+    def test_validate_business_invalid_format(self):
+        """Test business validation with invalid format"""
+        validation_data = {
+            "identifier": "123456"  # Invalid format
+        }
+        success, response = self.run_test(
+            "Validate Business - Invalid Format",
+            "POST",
+            "validate/business",
+            200,
+            data=validation_data
+        )
+        
+        if success:
+            print(f"   Validation result: {response.get('is_valid', False)}")
+            print(f"   Validation errors: {response.get('validation_errors', [])}")
+        
+        return success
+
+    def test_validate_business_nonexistent(self):
+        """Test business validation with non-existent number"""
+        validation_data = {
+            "identifier": "123456789"  # Non-existent SIREN
+        }
+        success, response = self.run_test(
+            "Validate Business - Non-existent",
+            "POST",
+            "validate/business",
+            200,
+            data=validation_data
+        )
+        
+        if success:
+            print(f"   Validation result: {response.get('is_valid', False)}")
+            print(f"   Validation errors: {response.get('validation_errors', [])}")
+        
+        return success
+
+    def test_autofill_business_siren(self):
+        """Test auto-fill business data with SIREN"""
+        autofill_data = {
+            "identifier": "732829320"  # Google France SIREN
+        }
+        success, response = self.run_test(
+            "Auto-fill Business - SIREN",
+            "POST",
+            "autofill/business",
+            200,
+            data=autofill_data
+        )
+        
+        if success:
+            print(f"   Auto-fill success: {response.get('success', False)}")
+            company_data = response.get('company_data', {})
+            if company_data:
+                print(f"   Company name: {company_data.get('company_name', 'N/A')}")
+                print(f"   Address: {company_data.get('address', 'N/A')}")
+                print(f"   City: {company_data.get('city', 'N/A')}")
+            missing_fields = response.get('missing_fields', [])
+            if missing_fields:
+                print(f"   Missing fields: {missing_fields}")
+        
+        return success
+
+    def test_autofill_business_siret(self):
+        """Test auto-fill business data with SIRET"""
+        autofill_data = {
+            "identifier": "73282932000074"  # Google France SIRET
+        }
+        success, response = self.run_test(
+            "Auto-fill Business - SIRET",
+            "POST",
+            "autofill/business",
+            200,
+            data=autofill_data
+        )
+        
+        if success:
+            print(f"   Auto-fill success: {response.get('success', False)}")
+            company_data = response.get('company_data', {})
+            if company_data:
+                print(f"   Company name: {company_data.get('company_name', 'N/A')}")
+                print(f"   Address: {company_data.get('address', 'N/A')}")
+                print(f"   City: {company_data.get('city', 'N/A')}")
+        
+        return success
+
+    def test_autofill_business_invalid(self):
+        """Test auto-fill business data with invalid identifier"""
+        autofill_data = {
+            "identifier": "invalid123"
+        }
+        success, response = self.run_test(
+            "Auto-fill Business - Invalid",
+            "POST",
+            "autofill/business",
+            200,
+            data=autofill_data
+        )
+        
+        if success:
+            print(f"   Auto-fill success: {response.get('success', False)}")
+            missing_fields = response.get('missing_fields', [])
+            if missing_fields:
+                print(f"   Missing fields/errors: {missing_fields}")
+        
+        return success
+
+    def test_send_invoice_notification(self):
+        """Test sending invoice notification email"""
+        # First get an invoice ID
+        success, invoices_response = self.run_test(
+            "Get Invoices for Email Test",
+            "GET",
+            "invoices",
+            200
+        )
+        
+        if not success or not invoices_response:
+            print("❌ No invoices found for email notification test")
+            return False
+            
+        invoices = invoices_response
+        if not invoices:
+            print("❌ No invoices available for email notification")
+            return False
+            
+        invoice_id = invoices[0]['id']
+        
+        email_data = {
+            "recipient": "test@example.com",
+            "invoice_id": invoice_id
+        }
+        
+        success, response = self.run_test(
+            "Send Invoice Notification Email",
+            "POST",
+            "notifications/invoice",
+            200,
+            data=email_data
+        )
+        
+        if success:
+            print(f"   Email success: {response.get('success', False)}")
+            print(f"   Message: {response.get('message', 'N/A')}")
+        
+        return success
+
+    def test_send_payment_reminder_standard(self):
+        """Test sending standard payment reminder email"""
+        # First get an invoice ID
+        success, invoices_response = self.run_test(
+            "Get Invoices for Payment Reminder Test",
+            "GET",
+            "invoices",
+            200
+        )
+        
+        if not success or not invoices_response:
+            print("❌ No invoices found for payment reminder test")
+            return False
+            
+        invoices = invoices_response
+        if not invoices:
+            print("❌ No invoices available for payment reminder")
+            return False
+            
+        invoice_id = invoices[0]['id']
+        
+        reminder_data = {
+            "recipient": "test@example.com",
+            "invoice_id": invoice_id,
+            "urgency_level": "standard"
+        }
+        
+        success, response = self.run_test(
+            "Send Payment Reminder - Standard",
+            "POST",
+            "notifications/payment-reminder",
+            200,
+            data=reminder_data
+        )
+        
+        if success:
+            print(f"   Email success: {response.get('success', False)}")
+            print(f"   Message: {response.get('message', 'N/A')}")
+        
+        return success
+
+    def test_send_payment_reminder_urgent(self):
+        """Test sending urgent payment reminder email"""
+        # First get an invoice ID
+        success, invoices_response = self.run_test(
+            "Get Invoices for Urgent Reminder Test",
+            "GET",
+            "invoices",
+            200
+        )
+        
+        if not success or not invoices_response:
+            print("❌ No invoices found for urgent reminder test")
+            return False
+            
+        invoices = invoices_response
+        if not invoices:
+            print("❌ No invoices available for urgent reminder")
+            return False
+            
+        invoice_id = invoices[0]['id']
+        
+        reminder_data = {
+            "recipient": "test@example.com",
+            "invoice_id": invoice_id,
+            "urgency_level": "urgent"
+        }
+        
+        success, response = self.run_test(
+            "Send Payment Reminder - Urgent",
+            "POST",
+            "notifications/payment-reminder",
+            200,
+            data=reminder_data
+        )
+        
+        if success:
+            print(f"   Email success: {response.get('success', False)}")
+            print(f"   Message: {response.get('message', 'N/A')}")
+        
+        return success
+
 def main():
     print("🚀 Starting AutoPro Rental API Tests")
     print("=" * 50)

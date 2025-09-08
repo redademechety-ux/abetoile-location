@@ -791,6 +791,232 @@ async def update_settings(settings_data: Settings, current_user: User = Depends(
     await db.settings.replace_one({}, settings_dict, upsert=True)
     return settings_data
 
+# INSEE/Business validation endpoints
+class BusinessValidationRequest(BaseModel):
+    identifier: str
+    
+class BusinessValidationResponse(BaseModel):
+    is_valid: bool
+    identifier: str
+    identifier_type: str
+    company_info: Optional[CompanyInfo] = None
+    validation_errors: List[str] = []
+
+@api_router.post("/validate/business", response_model=BusinessValidationResponse)
+async def validate_business(
+    request: BusinessValidationRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Validate French business using INSEE API"""
+    try:
+        identifier = request.identifier.strip()
+        
+        # Remove any spaces or formatting
+        clean_identifier = ''.join(filter(str.isdigit, identifier))
+        
+        if len(clean_identifier) == 9:
+            # SIREN validation
+            is_valid = await insee_service.validate_siren(clean_identifier)
+            identifier_type = "SIREN"
+        elif len(clean_identifier) == 14:
+            # SIRET validation
+            is_valid = await insee_service.validate_siret(clean_identifier)
+            identifier_type = "SIRET"
+        else:
+            return BusinessValidationResponse(
+                is_valid=False,
+                identifier=identifier,
+                identifier_type="UNKNOWN",
+                validation_errors=["Format invalide - doit être 9 chiffres (SIREN) ou 14 chiffres (SIRET)"]
+            )
+        
+        company_info = None
+        if is_valid:
+            company_info = await insee_service.get_company_info(clean_identifier)
+        
+        return BusinessValidationResponse(
+            is_valid=is_valid,
+            identifier=clean_identifier,
+            identifier_type=identifier_type,
+            company_info=company_info,
+            validation_errors=[] if is_valid else ["Entreprise non trouvée dans la base INSEE"]
+        )
+        
+    except Exception as e:
+        print(f"Erreur validation entreprise: {e}")
+        return BusinessValidationResponse(
+            is_valid=False,
+            identifier=request.identifier,
+            identifier_type="UNKNOWN",
+            validation_errors=[f"Erreur lors de la validation: {str(e)}"]
+        )
+
+class AutoFillRequest(BaseModel):
+    identifier: str
+
+class AutoFillResponse(BaseModel):
+    success: bool
+    company_data: Dict[str, Any] = {}
+    missing_fields: List[str] = []
+
+@api_router.post("/autofill/business", response_model=AutoFillResponse)
+async def autofill_business_data(
+    request: AutoFillRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Auto-fill business data from INSEE"""
+    try:
+        identifier = ''.join(filter(str.isdigit, request.identifier.strip()))
+        
+        if len(identifier) not in [9, 14]:
+            return AutoFillResponse(
+                success=False,
+                missing_fields=["Format invalide"]
+            )
+        
+        company_info = await insee_service.get_company_info(identifier)
+        
+        if not company_info:
+            return AutoFillResponse(
+                success=False,
+                missing_fields=["Entreprise non trouvée"]
+            )
+        
+        # Map company info to client form fields
+        company_data = {}
+        missing_fields = []
+        
+        if company_info.denomination:
+            company_data['company_name'] = company_info.denomination
+        else:
+            missing_fields.append('company_name')
+        
+        if company_info.address:
+            company_data['address'] = company_info.address
+        else:
+            missing_fields.append('address')
+        
+        if company_info.postal_code:
+            company_data['postal_code'] = company_info.postal_code
+        else:
+            missing_fields.append('postal_code')
+        
+        if company_info.city:
+            company_data['city'] = company_info.city
+        else:
+            missing_fields.append('city')
+        
+        if company_info.vat_number:
+            company_data['vat_number'] = company_info.vat_number
+        
+        if company_info.siren:
+            company_data['rcs_number'] = f"RCS {company_info.siren}"
+        
+        return AutoFillResponse(
+            success=True,
+            company_data=company_data,
+            missing_fields=missing_fields
+        )
+        
+    except Exception as e:
+        print(f"Erreur auto-fill: {e}")
+        return AutoFillResponse(
+            success=False,
+            missing_fields=[f"Erreur: {str(e)}"]
+        )
+
+# Email notification endpoints
+class EmailNotificationRequest(BaseModel):
+    recipient: EmailStr
+    invoice_id: str
+
+@api_router.post("/notifications/invoice")
+async def send_invoice_notification(
+    request: EmailNotificationRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Send invoice notification email"""
+    try:
+        # Get invoice data
+        invoice = await db.invoices.find_one({"id": request.invoice_id})
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        
+        # Get client data
+        client = await db.clients.find_one({"id": invoice['client_id']})
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
+        
+        # Prepare invoice data for email
+        invoice_data = {
+            'invoice_number': invoice['invoice_number'],
+            'client_name': client['company_name'],
+            'invoice_date': invoice['invoice_date'],
+            'total_ttc': invoice['total_ttc'],
+            'due_date': invoice['due_date']
+        }
+        
+        # Send email
+        result = await mailgun_service.send_invoice_email(request.recipient, invoice_data)
+        
+        return {
+            'success': result['success'],
+            'message': result.get('message', result.get('error', 'Email envoyé'))
+        }
+        
+    except Exception as e:
+        print(f"Erreur envoi email facture: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur envoi email: {str(e)}")
+
+class PaymentReminderRequest(BaseModel):
+    recipient: EmailStr
+    invoice_id: str
+    urgency_level: str = "standard"  # standard or urgent
+
+@api_router.post("/notifications/payment-reminder")
+async def send_payment_reminder(
+    request: PaymentReminderRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Send payment reminder email"""
+    try:
+        # Get invoice data
+        invoice = await db.invoices.find_one({"id": request.invoice_id})
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        
+        # Get client data
+        client = await db.clients.find_one({"id": invoice['client_id']})
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
+        
+        # Calculate days overdue
+        from datetime import datetime
+        due_date = datetime.fromisoformat(invoice['due_date'].replace('Z', '+00:00'))
+        days_overdue = max(0, (datetime.now(timezone.utc) - due_date).days)
+        
+        # Prepare reminder data for email
+        reminder_data = {
+            'invoice_number': invoice['invoice_number'],
+            'client_name': client['company_name'],
+            'amount_due': invoice['total_ttc'],
+            'due_date': invoice['due_date'],
+            'days_overdue': days_overdue,
+            'urgency_level': request.urgency_level
+        }
+        
+        # Send email
+        result = await mailgun_service.send_payment_reminder(request.recipient, reminder_data)
+        
+        return {
+            'success': result['success'],
+            'message': result.get('message', result.get('error', 'Rappel envoyé'))
+        }
+        
+    except Exception as e:
+        print(f"Erreur envoi rappel paiement: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur envoi rappel: {str(e)}")
+
 # Vehicle Document management endpoints
 @api_router.get("/vehicles/{vehicle_id}/documents", response_model=List[VehicleDocument])
 async def get_vehicle_documents(vehicle_id: str, current_user: User = Depends(get_current_user)):

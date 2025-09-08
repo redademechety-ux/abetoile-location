@@ -966,6 +966,22 @@ def main():
         ("Dashboard - Get Data", tester.test_dashboard),
         ("Settings - Get", tester.test_get_settings),
         ("Settings - Update", tester.test_update_settings),
+        
+        # NEW INTEGRATION TESTS - INSEE Business Validation
+        ("INSEE - Validate SIREN", tester.test_validate_business_siren),
+        ("INSEE - Validate SIRET", tester.test_validate_business_siret),
+        ("INSEE - Validate Invalid Format", tester.test_validate_business_invalid_format),
+        ("INSEE - Validate Non-existent", tester.test_validate_business_nonexistent),
+        
+        # NEW INTEGRATION TESTS - Auto-fill Business Data
+        ("Auto-fill - SIREN Data", tester.test_autofill_business_siren),
+        ("Auto-fill - SIRET Data", tester.test_autofill_business_siret),
+        ("Auto-fill - Invalid Data", tester.test_autofill_business_invalid),
+        
+        # NEW INTEGRATION TESTS - Email Notifications
+        ("Email - Invoice Notification", tester.test_send_invoice_notification),
+        ("Email - Payment Reminder Standard", tester.test_send_payment_reminder_standard),
+        ("Email - Payment Reminder Urgent", tester.test_send_payment_reminder_urgent),
     ]
     
     # Run all tests

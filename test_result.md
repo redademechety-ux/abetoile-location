@@ -146,6 +146,9 @@ backend:
         -working: "NA"
         -agent: "main"
         -comment: "Mailgun integration is pending - needs API key configuration"
+        -working: "NA"
+        -agent: "testing"
+        -comment: "NOT TESTED: Feature not implemented yet - requires Mailgun API key configuration"
 
   - task: "Implement INSEE/Infogreffe API integration"
     implemented: false
@@ -158,6 +161,45 @@ backend:
         -working: "NA"
         -agent: "main"
         -comment: "INSEE/Infogreffe API integration is pending for client data validation"
+        -working: "NA"
+        -agent: "testing"
+        -comment: "NOT TESTED: Feature not implemented yet - requires INSEE/Infogreffe API integration"
+
+  - task: "Authentication system"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: Authentication system working correctly. Login endpoint (/api/auth/login) returns JWT token successfully. Protected endpoints accept Bearer token authentication. GET /api/auth/me returns current user data correctly."
+
+  - task: "Basic CRUD operations"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: All basic CRUD operations working correctly. Clients: CREATE (POST /api/clients), READ (GET /api/clients, GET /api/clients/{id}), UPDATE available. Vehicles: CREATE (POST /api/vehicles), READ (GET /api/vehicles) working properly. All endpoints return proper HTTP status codes and JSON responses."
+
+  - task: "Accounting system integration"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "testing"
+        -comment: "Minor: Accounting summary endpoint has datetime comparison issue ('can't compare offset-naive and offset-aware datetimes'). Other accounting features work: entries retrieval, CSV/CIEL/SAGE/CEGID exports all functional. Core accounting functionality operational except summary endpoint."
 
 frontend:
   - task: "Fix PDF document viewing UI"

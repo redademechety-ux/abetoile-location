@@ -107,27 +107,33 @@ user_problem_statement: "Correction de 3 bugs critiques dans l'application Abeto
 backend:
   - task: "Fix PDF document viewing"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "user"
         -comment: "User reported PDF viewing not working in vehicle forms"
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: PDF document viewing is working correctly. Successfully uploaded test PDF document, viewed it with correct Content-Type (application/pdf), and downloaded it. All vehicle document endpoints (GET, POST upload, GET view, GET download) are functioning properly. The PDF viewing functionality is fully operational."
 
   - task: "Fix order creation API endpoints"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "user"
         -comment: "User reported order creation is completely broken"
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: Order creation is working correctly. Successfully created order with valid client and vehicle data. POST /api/orders endpoint returns 200 status and creates order with proper totals calculation (HT, VAT, TTC). Order retrieval via GET /api/orders also works. Order creation functionality is fully operational."
 
   - task: "Implement Mailgun integration"
     implemented: false

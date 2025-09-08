@@ -33,6 +33,7 @@ const ClientForm = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('info');
+  const [businessValidationError, setBusinessValidationError] = useState('');
 
   useEffect(() => {
     if (isEdit) {

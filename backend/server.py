@@ -746,6 +746,19 @@ async def get_dashboard(current_user: User = Depends(get_current_user)):
         "total_vehicles": total_vehicles
     }
 
+# Document management models
+class VehicleDocument(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    vehicle_id: str
+    label: str
+    filename: str
+    original_filename: str
+    document_type: str  # registration_card, insurance, technical_control, other
+    file_path: str
+    file_size: int
+    mime_type: str
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 # Settings endpoints
 @api_router.get("/settings", response_model=Settings)
 async def get_settings(current_user: User = Depends(get_current_user)):
@@ -763,6 +776,189 @@ async def update_settings(settings_data: Settings, current_user: User = Depends(
     settings_dict = prepare_for_mongo(settings_data.dict())
     await db.settings.replace_one({}, settings_dict, upsert=True)
     return settings_data
+
+# Document management endpoints
+@api_router.get("/vehicles/{vehicle_id}/documents", response_model=List[VehicleDocument])
+async def get_vehicle_documents(vehicle_id: str, current_user: User = Depends(get_current_user)):
+    documents = await db.vehicle_documents.find({"vehicle_id": vehicle_id}).to_list(length=None)
+    return [VehicleDocument(**parse_from_mongo(doc)) for doc in documents]
+
+@api_router.post("/vehicles/{vehicle_id}/documents/upload")
+async def upload_vehicle_document(
+    vehicle_id: str,
+    file: UploadFile = File(...),
+    label: str = Form(...),
+    document_type: str = Form(default="other"),
+    current_user: User = Depends(get_current_user)
+):
+    # Vérifier que le véhicule existe
+    vehicle = await db.vehicles.find_one({"id": vehicle_id})
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    # Vérifier la taille du fichier (max 10MB)
+    if file.size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+    
+    # Vérifier le type de fichier
+    allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="File type not supported")
+    
+    # Créer le répertoire de stockage
+    import os
+    upload_dir = f"/var/www/abetoile-location/uploads/vehicles/{vehicle_id}"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Générer un nom de fichier unique
+    file_extension = file.filename.split('.')[-1] if '.' in file.filename else ''
+    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+    file_path = os.path.join(upload_dir, unique_filename)
+    
+    try:
+        # Sauvegarder le fichier
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Créer l'enregistrement en base
+        document = VehicleDocument(
+            vehicle_id=vehicle_id,
+            label=label,
+            filename=unique_filename,
+            original_filename=file.filename,
+            document_type=document_type,
+            file_path=file_path,
+            file_size=len(content),
+            mime_type=file.content_type
+        )
+        
+        document_dict = prepare_for_mongo(document.dict())
+        await db.vehicle_documents.insert_one(document_dict)
+        
+        return document
+        
+    except Exception as e:
+        # Nettoyer le fichier en cas d'erreur
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+
+@api_router.get("/vehicles/{vehicle_id}/documents/{document_id}/view")
+async def view_vehicle_document(
+    vehicle_id: str,
+    document_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    document = await db.vehicle_documents.find_one({
+        "id": document_id,
+        "vehicle_id": vehicle_id
+    })
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    import os
+    if not os.path.exists(document["file_path"]):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    
+    from fastapi.responses import FileResponse
+    return FileResponse(
+        path=document["file_path"],
+        media_type=document["mime_type"],
+        filename=document["original_filename"]
+    )
+
+@api_router.get("/vehicles/{vehicle_id}/documents/{document_id}/download")
+async def download_vehicle_document(
+    vehicle_id: str,
+    document_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    document = await db.vehicle_documents.find_one({
+        "id": document_id,
+        "vehicle_id": vehicle_id
+    })
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    import os
+    if not os.path.exists(document["file_path"]):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    
+    from fastapi.responses import FileResponse
+    return FileResponse(
+        path=document["file_path"],
+        media_type=document["mime_type"],
+        filename=document["original_filename"],
+        headers={"Content-Disposition": f"attachment; filename={document['original_filename']}"}
+    )
+
+@api_router.put("/vehicles/{vehicle_id}/documents/{document_id}")
+async def update_vehicle_document(
+    vehicle_id: str,
+    document_id: str,
+    update_data: dict,
+    current_user: User = Depends(get_current_user)
+):
+    # Vérifier que le document existe
+    document = await db.vehicle_documents.find_one({
+        "id": document_id,
+        "vehicle_id": vehicle_id
+    })
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Mettre à jour seulement les champs autorisés
+    allowed_fields = ["label", "document_type"]
+    update_fields = {k: v for k, v in update_data.items() if k in allowed_fields}
+    
+    if update_fields:
+        await db.vehicle_documents.update_one(
+            {"id": document_id, "vehicle_id": vehicle_id},
+            {"$set": update_fields}
+        )
+    
+    # Retourner le document mis à jour
+    updated_document = await db.vehicle_documents.find_one({
+        "id": document_id,
+        "vehicle_id": vehicle_id
+    })
+    
+    return VehicleDocument(**parse_from_mongo(updated_document))
+
+@api_router.delete("/vehicles/{vehicle_id}/documents/{document_id}")
+async def delete_vehicle_document(
+    vehicle_id: str,
+    document_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    # Récupérer le document
+    document = await db.vehicle_documents.find_one({
+        "id": document_id,
+        "vehicle_id": vehicle_id
+    })
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Supprimer le fichier du disque
+    import os
+    if os.path.exists(document["file_path"]):
+        try:
+            os.remove(document["file_path"])
+        except OSError:
+            pass  # Continuer même si la suppression échoue
+    
+    # Supprimer l'enregistrement de la base
+    await db.vehicle_documents.delete_one({
+        "id": document_id,
+        "vehicle_id": vehicle_id
+    })
+    
+    return {"message": "Document deleted successfully"}
 
 # Include router
 app.include_router(api_router)

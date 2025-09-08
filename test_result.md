@@ -255,8 +255,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Create OrderForm component"
-    - "Fix table visualization buttons"
+    - "Fix PDF document viewing UI"
+    - "Test OrderForm frontend functionality"
+    - "Implement Mailgun integration"
+    - "Implement INSEE/Infogreffe API integration"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"

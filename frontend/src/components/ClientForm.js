@@ -182,7 +182,21 @@ const ClientForm = () => {
         </nav>
       </div>
 
+      {/* Messages d'erreur validation business */}
+      {businessValidationError && (
+        <div className="alert alert-error">
+          {businessValidationError}
+        </div>
+      )}
+
       {/* Contenu des onglets */}
+      {activeTab === 'validation' && (
+        <BusinessValidation 
+          onValidData={handleBusinessValidationData}
+          onError={handleBusinessValidationError}
+        />
+      )}
+
       {activeTab === 'info' && (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="card">

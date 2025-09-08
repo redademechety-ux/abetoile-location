@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Save, ArrowLeft, Upload } from 'lucide-react';
+import { Save, ArrowLeft, Upload, User } from 'lucide-react';
+import ClientDocuments from './ClientDocuments';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -13,7 +14,7 @@ const ClientForm = () => {
 
   const [formData, setFormData] = useState({
     company_name: '',
-    contact_name: '',
+    contact_person: '',
     email: '',
     phone: '',
     address: '',
@@ -21,14 +22,16 @@ const ClientForm = () => {
     postal_code: '',
     country: 'France',
     vat_rate: 20.0,
-    vat_number: '',
-    rcs_number: ''
+    intra_vat_number: '',
+    rcs_number: '',
+    notes: ''
   });
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [activeTab, setActiveTab] = useState('info');
 
   useEffect(() => {
     if (isEdit) {
@@ -68,25 +71,21 @@ const ClientForm = () => {
         await axios.put(`${API}/clients/${id}`, formData);
         setSuccess('Client modifié avec succès');
       } else {
-        await axios.post(`${API}/clients`, formData);
+        const response = await axios.post(`${API}/clients`, formData);
         setSuccess('Client créé avec succès');
+        // Rediriger vers l'edition pour pouvoir ajouter des documents
+        setTimeout(() => {
+          navigate(`/clients/edit/${response.data.id}`, { replace: true });
+          setActiveTab('documents');
+        }, 1500);
+        return;
       }
       
-      setTimeout(() => {
-        navigate('/clients');
-      }, 1500);
     } catch (error) {
       setError(error.response?.data?.detail || 'Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
     }
-  };
-
-  const validateRCS = async () => {
-    if (!formData.rcs_number) return;
-    
-    // Simulation de validation RCS (en attendant l'API INSEE)
-    alert('Validation RCS : Fonctionnalité disponible avec l\'API INSEE/Infogreffe');
   };
 
   if (loading) {
@@ -124,228 +123,242 @@ const ClientForm = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Informations générales</h2>
-          </div>
-          <div className="card-content">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="form-group">
-                <label className="form-label">Nom de l'entreprise *</label>
-                <input
-                  type="text"
-                  name="company_name"
-                  value={formData.company_name}
-                  onChange={handleChange}
-                  className="form-input"
-                  required
-                />
-              </div>
+      {/* Onglets */}
+      {isEdit && (
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('info')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'info'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Informations
+            </button>
+            <button
+              onClick={() => setActiveTab('documents')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'documents'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Documents
+            </button>
+          </nav>
+        </div>
+      )}
 
-              <div className="form-group">
-                <label className="form-label">Nom du contact *</label>
-                <input
-                  type="text"
-                  name="contact_name"
-                  value={formData.contact_name}
-                  onChange={handleChange}
-                  className="form-input"
-                  required
-                />
-              </div>
+      {/* Contenu des onglets */}
+      {activeTab === 'info' && (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title">Informations générales</h2>
+            </div>
+            <div className="card-content">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="form-group">
+                  <label className="form-label">Nom de l'entreprise / Particulier *</label>
+                  <input
+                    type="text"
+                    name="company_name"
+                    value={formData.company_name}
+                    onChange={handleChange}
+                    className="form-input"
+                    required
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Email *</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="form-input"
-                  required
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Personne de contact</label>
+                  <input
+                    type="text"
+                    name="contact_person"
+                    value={formData.contact_person}
+                    onChange={handleChange}
+                    className="form-input"
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Téléphone *</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="form-input"
-                  required
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Email *</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="form-input"
+                    required
+                  />
+                </div>
 
-              <div className="form-group md:col-span-2">
-                <label className="form-label">Adresse *</label>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  className="form-input"
-                  required
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Téléphone *</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="form-input"
+                    required
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Ville *</label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  className="form-input"
-                  required
-                />
-              </div>
+                <div className="form-group md:col-span-2">
+                  <label className="form-label">Adresse *</label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    className="form-input"
+                    required
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Code postal *</label>
-                <input
-                  type="text"
-                  name="postal_code"
-                  value={formData.postal_code}
-                  onChange={handleChange}
-                  className="form-input"
-                  required
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Ville *</label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    className="form-input"
+                    required
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Pays</label>
-                <select
-                  name="country"
-                  value={formData.country}
-                  onChange={handleChange}
-                  className="form-select"
-                >
-                  <option value="France">France</option>
-                  <option value="Belgique">Belgique</option>
-                  <option value="Suisse">Suisse</option>
-                  <option value="Luxembourg">Luxembourg</option>
-                </select>
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Code postal *</label>
+                  <input
+                    type="text"
+                    name="postal_code"
+                    value={formData.postal_code}
+                    onChange={handleChange}
+                    className="form-input"
+                    required
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Taux de TVA (%)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  name="vat_rate"
-                  value={formData.vat_rate}
-                  onChange={handleChange}
-                  className="form-input"
-                  min="0"
-                  max="100"
-                />
+                <div className="form-group">
+                  <label className="form-label">Pays</label>
+                  <input
+                    type="text"
+                    name="country"
+                    value={formData.country}
+                    onChange={handleChange}
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Taux de TVA (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="vat_rate"
+                    value={formData.vat_rate}
+                    onChange={handleChange}
+                    className="form-input"
+                    min="0"
+                    max="100"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Informations fiscales</h2>
-          </div>
-          <div className="card-content">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="form-group">
-                <label className="form-label">Numéro de TVA intracommunautaire</label>
-                <input
-                  type="text"
-                  name="vat_number"
-                  value={formData.vat_number}
-                  onChange={handleChange}
-                  className="form-input"
-                  placeholder="FR12345678901"
-                />
-              </div>
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title">Informations légales</h2>
+            </div>
+            <div className="card-content">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="form-group">
+                  <label className="form-label">Numéro de TVA intracommunautaire</label>
+                  <input
+                    type="text"
+                    name="intra_vat_number"
+                    value={formData.intra_vat_number}
+                    onChange={handleChange}
+                    className="form-input"
+                    placeholder="FR12345678901"
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Numéro RCS</label>
-                <div className="flex gap-2">
+                <div className="form-group">
+                  <label className="form-label">Numéro RCS</label>
                   <input
                     type="text"
                     name="rcs_number"
                     value={formData.rcs_number}
                     onChange={handleChange}
                     className="form-input"
-                    placeholder="123 456 789 R.C.S. Paris"
+                    placeholder="123 456 789 RCS Paris"
                   />
-                  <button
-                    type="button"
-                    onClick={validateRCS}
-                    className="btn btn-secondary"
-                    disabled={!formData.rcs_number}
-                  >
-                    Vérifier
-                  </button>
+                </div>
+
+                <div className="form-group md:col-span-2">
+                  <label className="form-label">Notes</label>
+                  <textarea
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleChange}
+                    className="form-input"
+                    rows="3"
+                    placeholder="Notes internes sur le client..."
+                  />
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
+          <div className="flex gap-4">
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Sauvegarde...
+                </>
+              ) : (
+                <>
+                  <Save size={20} />
+                  {isEdit ? 'Modifier' : 'Créer'}
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/clients')}
+              className="btn btn-secondary"
+            >
+              Annuler
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Onglet Documents */}
+      {activeTab === 'documents' && isEdit && (
         <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Documents</h2>
-          </div>
           <div className="card-content">
-            <div className="space-y-4">
-              <div>
-                <label className="form-label">Permis de conduire et pièce d'identité</label>
-                <div className="border-dashed border-2 border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="mx-auto mb-2 text-gray-400" size={48} />
-                  <p className="text-gray-600">
-                    Glissez vos fichiers ici ou cliquez pour sélectionner
-                  </p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Formats acceptés: PDF, JPG, PNG (max 10MB)
-                  </p>
-                  <input
-                    type="file"
-                    multiple
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    className="hidden"
-                    onChange={(e) => {
-                      // TODO: Gérer l'upload des fichiers
-                      console.log('Fichiers sélectionnés:', e.target.files);
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+            <ClientDocuments 
+              clientId={id} 
+              onDocumentUpdate={() => {
+                // Callback pour rafraîchir si nécessaire
+              }} 
+            />
           </div>
         </div>
-
-        <div className="flex gap-4">
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={saving}
-          >
-            {saving ? (
-              <span className="loading-spinner"></span>
-            ) : (
-              <>
-                <Save size={20} />
-                {isEdit ? 'Modifier' : 'Créer'}
-              </>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/clients')}
-            className="btn btn-secondary"
-          >
-            Annuler
-          </button>
-        </div>
-      </form>
+      )}
     </div>
   );
 };

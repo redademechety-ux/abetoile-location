@@ -660,20 +660,27 @@ def main():
         ("Vehicle - Create", tester.test_create_vehicle),
         ("Vehicle - Get All", tester.test_get_vehicles),
         
-        # Order tests
+        # Order tests (CRITICAL - User reported broken)
         ("Order - Create", tester.test_create_order),
         ("Order - Get All", tester.test_get_orders),
+        
+        # Document tests (CRITICAL - User reported PDF viewing broken)
+        ("Vehicle Documents - Get List", tester.test_get_vehicle_documents),
+        ("Vehicle Documents - Upload", tester.test_upload_vehicle_document),
+        ("Vehicle Documents - View PDF", tester.test_view_vehicle_document),
+        ("Vehicle Documents - Download", tester.test_download_vehicle_document),
+        ("Client Documents - Get List", tester.test_get_client_documents),
         
         # Invoice tests
         ("Invoice - Get All", tester.test_get_invoices),
         ("Invoice - Get Overdue", tester.test_get_overdue_invoices),
         
-        # NEW PDF Generation tests
+        # PDF Generation tests
         ("PDF - Generate Invoice PDF", tester.test_generate_invoice_pdf),
         ("PDF - Download Invoice PDF", tester.test_download_invoice_pdf),
         ("Invoice - Mark as Paid", tester.test_mark_invoice_paid),
         
-        # NEW Accounting tests
+        # Accounting tests
         ("Accounting - Get Entries", tester.test_get_accounting_entries),
         ("Accounting - Get Summary", tester.test_get_accounting_summary),
         ("Accounting - Export CSV", tester.test_export_accounting_csv),

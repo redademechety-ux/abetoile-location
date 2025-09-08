@@ -125,6 +125,7 @@ const ClientList = () => {
                             <Edit size={16} />
                           </Link>
                           <button
+                            onClick={() => alert(`Détails du client\n\nEntreprise: ${client.company_name}\nContact: ${client.contact_name}\nEmail: ${client.email}\nTéléphone: ${client.phone}\nAdresse: ${client.address}\n${client.postal_code} ${client.city}\nTVA: ${client.vat_rate}%\n${client.rcs_number ? `RCS: ${client.rcs_number}` : ''}`)}
                             className="btn btn-sm btn-secondary"
                             title="Voir détails"
                           >

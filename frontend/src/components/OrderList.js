@@ -160,6 +160,7 @@ const OrderList = () => {
                       <td>
                         <div className="flex gap-2">
                           <button
+                            onClick={() => alert(`Détails de la commande ${order.order_number}\n\nClient: ${getClientName(order.client_id)}\nDate: ${new Date(order.start_date).toLocaleDateString('fr-FR')}\nTotal TTC: ${order.total_ttc.toFixed(2)}€\nStatut: ${order.status}`)}
                             className="btn btn-sm btn-secondary"
                             title="Voir détails"
                           >

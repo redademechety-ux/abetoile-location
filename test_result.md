@@ -234,6 +234,9 @@ frontend:
         -working: true
         -agent: "main"
         -comment: "FIXED: Added onClick handlers to visualization buttons in OrderList.js, ClientList.js, and VehicleList.js. Buttons now show detailed information in alert dialogs."
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: Table visualization buttons are working perfectly. Successfully tested 'View details' buttons in all three tables (Orders, Clients, Vehicles). Each button properly displays detailed information in alert dialogs with relevant data (order details with client/date/total, client details with company/contact info, vehicle details with type/specs/rates). All onClick handlers are functional and provide meaningful information to users."
 
   - task: "Create OrderForm component"
     implemented: true

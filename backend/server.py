@@ -1082,18 +1082,33 @@ async def view_client_document(
     
     from fastapi.responses import FileResponse
     
-    # Correction pour la visualisation PDF dans navigateur
-    headers = {}
+    # Configuration spéciale pour la visualisation PDF
+    headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
+    
     if document["mime_type"] == "application/pdf":
+        # Pour les PDF, forcer l'affichage inline dans le navigateur
         headers["Content-Disposition"] = f'inline; filename="{document["original_filename"]}"'
         headers["Content-Type"] = "application/pdf"
-    
-    return FileResponse(
-        path=document["file_path"],
-        media_type=document["mime_type"],
-        filename=document["original_filename"],
-        headers=headers
-    )
+        headers["X-Content-Type-Options"] = "nosniff"
+        
+        return FileResponse(
+            path=document["file_path"],
+            media_type="application/pdf",
+            filename=document["original_filename"],
+            headers=headers
+        )
+    else:
+        # Pour les images, affichage normal
+        return FileResponse(
+            path=document["file_path"],
+            media_type=document["mime_type"],
+            filename=document["original_filename"],
+            headers=headers
+        )
 
 @api_router.get("/clients/{client_id}/documents/{document_id}/download")
 async def download_client_document(

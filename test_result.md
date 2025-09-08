@@ -318,8 +318,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Implement Mailgun integration"
-    - "Implement INSEE/Infogreffe API integration"
+    - "All new integration features tested and working"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"

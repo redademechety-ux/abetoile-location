@@ -12,8 +12,8 @@ class BusinessStatus(str, Enum):
     CEASED = "C"
 
 class CompanyInfo(BaseModel):
-    siren: str = Field(..., regex=r"^\d{9}$")
-    siret: Optional[str] = Field(None, regex=r"^\d{14}$")
+    siren: str = Field(..., pattern=r"^\d{9}$")
+    siret: Optional[str] = Field(None, pattern=r"^\d{14}$")
     denomination: Optional[str] = None
     legal_form: Optional[str] = None
     legal_form_code: Optional[str] = None

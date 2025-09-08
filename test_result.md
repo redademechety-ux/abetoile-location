@@ -204,7 +204,7 @@ backend:
 frontend:
   - task: "Fix PDF document viewing UI"
     implemented: true
-    working: false
+    working: "unknown"
     file: "/app/frontend/src/components/VehicleDocuments.js"
     stuck_count: 0
     priority: "high"
@@ -213,6 +213,9 @@ frontend:
         -working: false
         -agent: "user"
         -comment: "PDF viewing functionality implemented but not working properly"
+        -working: "unknown"
+        -agent: "main"
+        -comment: "Backend PDF viewing API works correctly. Issue likely in frontend implementation of handleView function. Need to test frontend."
 
   - task: "Fix table visualization buttons"
     implemented: true

@@ -246,10 +246,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Fix PDF document viewing"
     - "Create OrderForm component"
     - "Fix table visualization buttons"
-    - "Fix order creation API endpoints"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"

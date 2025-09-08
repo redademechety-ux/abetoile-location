@@ -479,6 +479,165 @@ class AutoProAPITester:
         )
         return success
 
+    def test_get_vehicle_documents(self):
+        """Test get vehicle documents"""
+        if 'vehicle_id' not in self.test_data:
+            print("❌ Skipping - No vehicle ID available")
+            return False
+            
+        vehicle_id = self.test_data['vehicle_id']
+        success, response = self.run_test(
+            "Get Vehicle Documents",
+            "GET",
+            f"vehicles/{vehicle_id}/documents",
+            200
+        )
+        
+        if success:
+            print(f"   Found {len(response)} vehicle documents")
+            
+        return success
+
+    def test_upload_vehicle_document(self):
+        """Test upload vehicle document"""
+        if 'vehicle_id' not in self.test_data:
+            print("❌ Skipping - No vehicle ID available")
+            return False
+            
+        vehicle_id = self.test_data['vehicle_id']
+        
+        # Create a simple test PDF content (base64 encoded)
+        import base64
+        test_pdf_content = b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n>>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000074 00000 n \n0000000120 00000 n \ntrailer\n<<\n/Size 4\n/Root 1 0 R\n>>\nstartxref\n179\n%%EOF"
+        
+        # For file upload, we need to use multipart/form-data
+        url = f"{self.base_url}/vehicles/{vehicle_id}/documents/upload"
+        headers = {}
+        if self.token:
+            headers['Authorization'] = f'Bearer {self.token}'
+
+        files = {
+            'file': ('test_document.pdf', test_pdf_content, 'application/pdf')
+        }
+        data = {
+            'label': 'Test Vehicle Document',
+            'document_type': 'registration_card'
+        }
+
+        self.tests_run += 1
+        print(f"\n🔍 Testing Upload Vehicle Document...")
+        print(f"   URL: {url}")
+        
+        try:
+            response = requests.post(url, files=files, data=data, headers=headers)
+            
+            success = response.status_code == 200
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                try:
+                    response_data = response.json()
+                    self.test_data['vehicle_document_id'] = response_data.get('id')
+                    return success, response_data
+                except:
+                    return success, {}
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                try:
+                    error_detail = response.json()
+                    print(f"   Error: {error_detail}")
+                except:
+                    print(f"   Response: {response.text}")
+                return False, {}
+
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False, {}
+
+    def test_view_vehicle_document(self):
+        """Test view vehicle document (PDF viewing functionality)"""
+        if 'vehicle_id' not in self.test_data or 'vehicle_document_id' not in self.test_data:
+            print("❌ Skipping - No vehicle or document ID available")
+            return False
+            
+        vehicle_id = self.test_data['vehicle_id']
+        document_id = self.test_data['vehicle_document_id']
+        
+        url = f"{self.base_url}/vehicles/{vehicle_id}/documents/{document_id}/view"
+        headers = {}
+        if self.token:
+            headers['Authorization'] = f'Bearer {self.token}'
+
+        self.tests_run += 1
+        print(f"\n🔍 Testing View Vehicle Document (PDF Viewing)...")
+        print(f"   URL: {url}")
+        
+        try:
+            response = requests.get(url, headers=headers)
+            
+            success = response.status_code == 200
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                print(f"   Content-Type: {response.headers.get('Content-Type', 'Unknown')}")
+                print(f"   Content-Length: {len(response.content)} bytes")
+                
+                # Check if it's a PDF response
+                if response.headers.get('Content-Type') == 'application/pdf':
+                    print(f"   ✅ PDF content served correctly")
+                else:
+                    print(f"   ⚠️  Expected PDF content-type, got: {response.headers.get('Content-Type')}")
+                    
+                return success, {}
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                try:
+                    error_detail = response.json()
+                    print(f"   Error: {error_detail}")
+                except:
+                    print(f"   Response: {response.text}")
+                return False, {}
+
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False, {}
+
+    def test_download_vehicle_document(self):
+        """Test download vehicle document"""
+        if 'vehicle_id' not in self.test_data or 'vehicle_document_id' not in self.test_data:
+            print("❌ Skipping - No vehicle or document ID available")
+            return False
+            
+        vehicle_id = self.test_data['vehicle_id']
+        document_id = self.test_data['vehicle_document_id']
+        
+        success, response = self.run_test(
+            "Download Vehicle Document",
+            "GET",
+            f"vehicles/{vehicle_id}/documents/{document_id}/download",
+            200
+        )
+        return success
+
+    def test_get_client_documents(self):
+        """Test get client documents"""
+        if 'client_id' not in self.test_data:
+            print("❌ Skipping - No client ID available")
+            return False
+            
+        client_id = self.test_data['client_id']
+        success, response = self.run_test(
+            "Get Client Documents",
+            "GET",
+            f"clients/{client_id}/documents",
+            200
+        )
+        
+        if success:
+            print(f"   Found {len(response)} client documents")
+            
+        return success
+
 def main():
     print("🚀 Starting AutoPro Rental API Tests")
     print("=" * 50)

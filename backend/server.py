@@ -18,6 +18,8 @@ from enum import Enum
 import base64
 from pdf_generator import PDFInvoiceGenerator
 from accounting import FrenchAccounting, AccountingEntry
+from services.mailgun_service import mailgun_service, EmailRequest
+from services.insee_service import insee_service, CompanyInfo
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')

@@ -62,6 +62,25 @@ const ClientForm = () => {
     }));
   };
 
+  const handleBusinessValidationData = (businessData) => {
+    setFormData(prev => ({
+      ...prev,
+      company_name: businessData.company_name || prev.company_name,
+      address: businessData.address || prev.address,
+      postal_code: businessData.postal_code || prev.postal_code,
+      city: businessData.city || prev.city,
+      vat_number: businessData.vat_number || prev.vat_number,
+      rcs_number: businessData.rcs_number || prev.rcs_number
+    }));
+    setSuccess('Données entreprise remplies automatiquement');
+    setBusinessValidationError('');
+  };
+
+  const handleBusinessValidationError = (errorMessage) => {
+    setBusinessValidationError(errorMessage);
+    setError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);

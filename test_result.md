@@ -216,15 +216,18 @@ frontend:
 
   - task: "Fix table visualization buttons"
     implemented: true
-    working: false
+    working: true
     file: "/app/frontend/src/components/OrderList.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "user"
         -comment: "Table visualization buttons have no onClick handlers"
+        -working: true
+        -agent: "main"
+        -comment: "FIXED: Added onClick handlers to visualization buttons in OrderList.js, ClientList.js, and VehicleList.js. Buttons now show detailed information in alert dialogs."
 
   - task: "Create OrderForm component"
     implemented: false

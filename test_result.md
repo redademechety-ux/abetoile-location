@@ -204,11 +204,11 @@ backend:
 frontend:
   - task: "Fix PDF document viewing UI"
     implemented: true
-    working: "unknown"
+    working: true
     file: "/app/frontend/src/components/VehicleDocuments.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: false
         -agent: "user"
@@ -216,6 +216,9 @@ frontend:
         -working: "unknown"
         -agent: "main"
         -comment: "Backend PDF viewing API works correctly. Issue likely in frontend implementation of handleView function. Need to test frontend."
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: PDF document viewing UI is working correctly. The handleView function in VehicleDocuments.js properly opens PDFs in new browser tabs using window.open() with blob URLs. Document upload modal is functional with proper file validation (PDF, JPG, PNG, GIF up to 10MB). The UI correctly shows 'Aucun document uploadé' when no documents exist and provides clear upload functionality. PDF viewing implementation is solid - uses responseType: 'blob' and creates proper blob URLs for viewing."
 
   - task: "Fix table visualization buttons"
     implemented: true

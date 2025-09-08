@@ -759,6 +759,18 @@ class VehicleDocument(BaseModel):
     mime_type: str
     uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class ClientDocument(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_id: str
+    label: str
+    filename: str
+    original_filename: str
+    document_type: str  # driving_license, identity, business_registration, bank_details, other
+    file_path: str
+    file_size: int
+    mime_type: str
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 # Settings endpoints
 @api_router.get("/settings", response_model=Settings)
 async def get_settings(current_user: User = Depends(get_current_user)):
@@ -777,7 +789,7 @@ async def update_settings(settings_data: Settings, current_user: User = Depends(
     await db.settings.replace_one({}, settings_dict, upsert=True)
     return settings_data
 
-# Document management endpoints
+# Vehicle Document management endpoints
 @api_router.get("/vehicles/{vehicle_id}/documents", response_model=List[VehicleDocument])
 async def get_vehicle_documents(vehicle_id: str, current_user: User = Depends(get_current_user)):
     documents = await db.vehicle_documents.find({"vehicle_id": vehicle_id}).to_list(length=None)
@@ -863,10 +875,18 @@ async def view_vehicle_document(
         raise HTTPException(status_code=404, detail="File not found on disk")
     
     from fastapi.responses import FileResponse
+    
+    # Correction pour la visualisation PDF dans navigateur
+    headers = {}
+    if document["mime_type"] == "application/pdf":
+        headers["Content-Disposition"] = f'inline; filename="{document["original_filename"]}"'
+        headers["Content-Type"] = "application/pdf"
+    
     return FileResponse(
         path=document["file_path"],
         media_type=document["mime_type"],
-        filename=document["original_filename"]
+        filename=document["original_filename"],
+        headers=headers
     )
 
 @api_router.get("/vehicles/{vehicle_id}/documents/{document_id}/download")
@@ -956,6 +976,197 @@ async def delete_vehicle_document(
     await db.vehicle_documents.delete_one({
         "id": document_id,
         "vehicle_id": vehicle_id
+    })
+    
+    return {"message": "Document deleted successfully"}
+
+# Client Document management endpoints
+@api_router.get("/clients/{client_id}/documents", response_model=List[ClientDocument])
+async def get_client_documents(client_id: str, current_user: User = Depends(get_current_user)):
+    documents = await db.client_documents.find({"client_id": client_id}).to_list(length=None)
+    return [ClientDocument(**parse_from_mongo(doc)) for doc in documents]
+
+@api_router.post("/clients/{client_id}/documents/upload")
+async def upload_client_document(
+    client_id: str,
+    file: UploadFile = File(...),
+    label: str = Form(...),
+    document_type: str = Form(default="other"),
+    current_user: User = Depends(get_current_user)
+):
+    # Vérifier que le client existe
+    client = await db.clients.find_one({"id": client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Vérifier la taille du fichier (max 10MB)
+    if file.size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+    
+    # Vérifier le type de fichier
+    allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="File type not supported")
+    
+    # Créer le répertoire de stockage
+    import os
+    upload_dir = f"/var/www/abetoile-location/uploads/clients/{client_id}"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Générer un nom de fichier unique
+    file_extension = file.filename.split('.')[-1] if '.' in file.filename else ''
+    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+    file_path = os.path.join(upload_dir, unique_filename)
+    
+    try:
+        # Sauvegarder le fichier
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Créer l'enregistrement en base
+        document = ClientDocument(
+            client_id=client_id,
+            label=label,
+            filename=unique_filename,
+            original_filename=file.filename,
+            document_type=document_type,
+            file_path=file_path,
+            file_size=len(content),
+            mime_type=file.content_type
+        )
+        
+        document_dict = prepare_for_mongo(document.dict())
+        await db.client_documents.insert_one(document_dict)
+        
+        return document
+        
+    except Exception as e:
+        # Nettoyer le fichier en cas d'erreur
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+
+@api_router.get("/clients/{client_id}/documents/{document_id}/view")
+async def view_client_document(
+    client_id: str,
+    document_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    document = await db.client_documents.find_one({
+        "id": document_id,
+        "client_id": client_id
+    })
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    import os
+    if not os.path.exists(document["file_path"]):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    
+    from fastapi.responses import FileResponse
+    
+    # Correction pour la visualisation PDF dans navigateur
+    headers = {}
+    if document["mime_type"] == "application/pdf":
+        headers["Content-Disposition"] = f'inline; filename="{document["original_filename"]}"'
+        headers["Content-Type"] = "application/pdf"
+    
+    return FileResponse(
+        path=document["file_path"],
+        media_type=document["mime_type"],
+        filename=document["original_filename"],
+        headers=headers
+    )
+
+@api_router.get("/clients/{client_id}/documents/{document_id}/download")
+async def download_client_document(
+    client_id: str,
+    document_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    document = await db.client_documents.find_one({
+        "id": document_id,
+        "client_id": client_id
+    })
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    import os
+    if not os.path.exists(document["file_path"]):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    
+    from fastapi.responses import FileResponse
+    return FileResponse(
+        path=document["file_path"],
+        media_type=document["mime_type"],
+        filename=document["original_filename"],
+        headers={"Content-Disposition": f"attachment; filename={document['original_filename']}"}
+    )
+
+@api_router.put("/clients/{client_id}/documents/{document_id}")
+async def update_client_document(
+    client_id: str,
+    document_id: str,
+    update_data: dict,
+    current_user: User = Depends(get_current_user)
+):
+    # Vérifier que le document existe
+    document = await db.client_documents.find_one({
+        "id": document_id,
+        "client_id": client_id
+    })
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Mettre à jour seulement les champs autorisés
+    allowed_fields = ["label", "document_type"]
+    update_fields = {k: v for k, v in update_data.items() if k in allowed_fields}
+    
+    if update_fields:
+        await db.client_documents.update_one(
+            {"id": document_id, "client_id": client_id},
+            {"$set": update_fields}
+        )
+    
+    # Retourner le document mis à jour
+    updated_document = await db.client_documents.find_one({
+        "id": document_id,
+        "client_id": client_id
+    })
+    
+    return ClientDocument(**parse_from_mongo(updated_document))
+
+@api_router.delete("/clients/{client_id}/documents/{document_id}")
+async def delete_client_document(
+    client_id: str,
+    document_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    # Récupérer le document
+    document = await db.client_documents.find_one({
+        "id": document_id,
+        "client_id": client_id
+    })
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Supprimer le fichier du disque
+    import os
+    if os.path.exists(document["file_path"]):
+        try:
+            os.remove(document["file_path"])
+        except OSError:
+            pass  # Continuer même si la suppression échoue
+    
+    # Supprimer l'enregistrement de la base
+    await db.client_documents.delete_one({
+        "id": document_id,
+        "client_id": client_id
     })
     
     return {"message": "Document deleted successfully"}

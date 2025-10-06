@@ -386,6 +386,11 @@ async def get_vehicle(vehicle_id: str, current_user: User = Depends(get_current_
     return Vehicle(**parse_from_mongo(vehicle))
 
 # Order endpoints
+def calculate_days_between(start_date: datetime, end_date: datetime) -> int:
+    """Calculate number of days between two dates"""
+    delta = end_date - start_date
+    return max(1, delta.days + 1)  # Include both start and end date
+
 @api_router.post("/orders", response_model=Order)
 async def create_order(order_data: OrderCreate, current_user: User = Depends(get_current_user)):
     # Get client to calculate VAT
@@ -393,21 +398,55 @@ async def create_order(order_data: OrderCreate, current_user: User = Depends(get
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    # Calculate totals
-    total_ht = sum(item.daily_rate * item.quantity for item in order_data.items)
-    total_vat = total_ht * (client['vat_rate'] / 100)
+    # Process each item and calculate totals
+    processed_items = []
+    total_ht = 0
+    
+    for item in order_data.items:
+        # Calculate number of days for this item
+        days = calculate_days_between(item.start_date, item.end_date)
+        
+        # Calculate item total
+        item_total_ht = item.daily_rate * item.quantity * days
+        
+        # Create processed item
+        processed_item = OrderItem(
+            vehicle_id=item.vehicle_id,
+            quantity=item.quantity,
+            daily_rate=item.daily_rate,
+            total_days=days,
+            is_renewable=item.is_renewable,
+            rental_period=item.rental_period,
+            rental_duration=item.rental_duration,
+            start_date=item.start_date,
+            end_date=item.end_date,
+            item_total_ht=item_total_ht
+        )
+        
+        processed_items.append(processed_item)
+        total_ht += item_total_ht
+    
+    # Calculate VAT and totals
+    vat_rate = client['vat_rate'] / 100
+    total_vat = total_ht * vat_rate
     total_ttc = total_ht + total_vat
+    
+    # Calculate deposit VAT and grand total
+    deposit_vat = order_data.deposit_amount * vat_rate if order_data.deposit_amount > 0 else 0
+    grand_total = total_ttc + order_data.deposit_amount + deposit_vat
     
     order_number = await generate_order_number()
     
     order = Order(
         client_id=order_data.client_id,
         order_number=order_number,
-        items=order_data.items,
-        start_date=order_data.start_date,
+        items=processed_items,
+        deposit_amount=order_data.deposit_amount,
         total_ht=total_ht,
         total_vat=total_vat,
         total_ttc=total_ttc,
+        deposit_vat=deposit_vat,
+        grand_total=grand_total,
         created_by=current_user.id
     )
     

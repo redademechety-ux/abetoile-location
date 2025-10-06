@@ -186,6 +186,17 @@ class OrderCreate(BaseModel):
     items: List[OrderItem]
     deposit_amount: float = 0
 
+class Payment(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    invoice_id: str
+    amount: float
+    payment_date: datetime
+    payment_method: str  # "bank", "cash", "check", "card"
+    reference: Optional[str] = None  # Référence bancaire, numéro chèque, etc.
+    notes: Optional[str] = None
+    created_by: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class Invoice(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     invoice_number: str
@@ -194,11 +205,16 @@ class Invoice(BaseModel):
     invoice_date: datetime
     due_date: datetime
     items: List[OrderItem]
+    deposit_amount: float = 0  # Montant de caution
+    deposit_vat: float = 0  # TVA sur caution
     total_ht: float
     total_vat: float
     total_ttc: float
+    grand_total: float = 0  # Total TTC + caution
     status: InvoiceStatus = InvoiceStatus.DRAFT
-    payment_date: Optional[datetime] = None
+    amount_paid: float = 0  # Montant total payé
+    remaining_amount: float = 0  # Montant restant à payer
+    payment_date: Optional[datetime] = None  # Date du dernier paiement
     pdf_data: Optional[str] = None  # Base64 encoded PDF
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

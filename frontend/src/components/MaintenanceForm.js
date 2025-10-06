@@ -456,30 +456,63 @@ const MaintenanceForm = () => {
               {/* Upload */}
               <div className="mb-6">
                 <label className="form-label">Ajouter un document</label>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-4">
+                <div className="space-y-4">
+                  {/* Sélection du fichier */}
+                  <div className="form-group">
                     <input
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={handleFileUpload}
+                      onChange={handleFileSelect}
                       className="form-input"
                       disabled={uploadingFile}
                     />
-                    {uploadingFile && (
-                      <div className="flex items-center gap-2 text-blue-600">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                        <span className="text-sm">Téléchargement...</span>
-                      </div>
-                    )}
                   </div>
+
+                  {/* Fichier sélectionné */}
+                  {selectedFile && (
+                    <div className="bg-green-50 border border-green-200 rounded p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileText size={20} className="text-green-600" />
+                          <div>
+                            <div className="font-medium text-green-800">{selectedFile.name}</div>
+                            <div className="text-sm text-green-600">
+                              Type: {selectedFile.type} • Taille: {(selectedFile.size / 1024).toFixed(1)} KB
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleFileUpload}
+                          disabled={uploadingFile}
+                          className="btn btn-success"
+                        >
+                          {uploadingFile ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Upload...
+                            </>
+                          ) : (
+                            <>
+                              <Upload size={16} />
+                              Télécharger
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Instructions */}
                   <div className="bg-blue-50 border border-blue-200 rounded p-3">
                     <p className="text-sm text-blue-800 font-medium mb-1">
                       📄 Instructions d'upload
                     </p>
                     <ul className="text-sm text-blue-700 space-y-1">
-                      <li>• Formats acceptés: PDF, JPG, PNG</li>
-                      <li>• Taille maximum: 10 MB par fichier</li>
-                      <li>• Le document sera lié à cet enregistrement de maintenance</li>
+                      <li>• <strong>Étape 1:</strong> Cliquez sur "Choisir un fichier" ci-dessus</li>
+                      <li>• <strong>Étape 2:</strong> Sélectionnez un fichier PDF, JPG ou PNG (max 10MB)</li>
+                      <li>• <strong>Étape 3:</strong> Cliquez sur le bouton "Télécharger" qui apparaît</li>
+                      <li>• Le document sera automatiquement lié à cet enregistrement</li>
                     </ul>
                   </div>
                 </div>

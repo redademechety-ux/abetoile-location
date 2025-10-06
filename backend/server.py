@@ -237,6 +237,47 @@ class Settings(BaseModel):
     mailgun_api_key: Optional[str] = None
     mailgun_domain: Optional[str] = None
 
+class Document(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    filename: str
+    content_type: str
+    size: int
+    label: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_by: str
+
+class MaintenanceType(str, Enum):
+    REPAIR = "repair"  # Réparation
+    MAINTENANCE = "maintenance"  # Entretien
+    INSPECTION = "inspection"  # Contrôle
+    OTHER = "other"  # Autre
+
+class MaintenanceRecord(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    vehicle_id: str
+    maintenance_type: MaintenanceType
+    description: str  # Libellé
+    maintenance_date: datetime
+    amount_ht: float  # Montant HT
+    vat_rate: float  # Taux de TVA (en pourcentage)
+    vat_amount: float  # Montant TVA
+    amount_ttc: float  # Montant TTC
+    supplier: Optional[str] = None  # Fournisseur/Garage
+    documents: List[str] = []  # IDs des documents PDF/JPG
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_by: str
+
+class MaintenanceRecordCreate(BaseModel):
+    vehicle_id: str
+    maintenance_type: MaintenanceType
+    description: str
+    maintenance_date: datetime
+    amount_ht: float
+    vat_rate: float
+    supplier: Optional[str] = None
+    notes: Optional[str] = None
 # Auth functions
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)

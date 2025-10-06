@@ -338,6 +338,9 @@ backend:
         -working: true
         -agent: "testing"
         -comment: "TESTED: Document Management for Maintenance is WORKING CORRECTLY. UPLOAD: Successfully uploads PDF/JPG documents to maintenance records. LIST: Retrieves document lists correctly. DELETE: Removes documents and updates maintenance records properly. DOWNLOAD: Fixed FileResponse import issue - now working correctly. Accepts PDF/JPG formats as specified. Document management updates maintenance records correctly. All CRUD operations work with proper error handling. System is fully operational."
+        -working: true
+        -agent: "testing"
+        -comment: "RE-TESTED: Maintenance file upload functionality is WORKING PERFECTLY. Comprehensive testing conducted in response to user report 'Dans la fonctionnalité Maintenance & Réparations l'ajout de fichier ne fonctionne pas'. FINDINGS: 1) Backend API endpoints working 100% correctly (POST /api/maintenance/{id}/documents, GET /api/maintenance/{id}/documents, GET /api/documents/{id}/download). 2) File upload accepts PDF/JPG/PNG formats correctly. 3) Files are properly saved to /app/documents/ directory. 4) Document records created in database and associated with maintenance records. 5) Authentication working correctly. 6) Frontend simulation tests pass 100%. 7) Error handling works (rejects unsupported file types, validates file size). CONCLUSION: Backend file upload functionality is fully operational. User issue may be related to frontend UI workflow or user experience rather than backend functionality."
 
 frontend:
   - task: "Fix PDF document viewing UI"

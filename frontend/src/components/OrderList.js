@@ -57,8 +57,10 @@ const OrderList = () => {
       const hasRenewableItems = order.items?.some(item => item.is_renewable);
       const newRenewableStatus = !hasRenewableItems;
 
-      const response = await axios.put(`${API}/orders/${order.id}/renewal`, {
-        is_renewable: newRenewableStatus
+      const response = await axios.patch(`${API}/orders/${order.id}/renewal`, {
+        is_renewable: newRenewableStatus,
+        rental_period: newRenewableStatus ? 'months' : null,
+        rental_duration: newRenewableStatus ? 1 : null
       });
 
       if (response.data.success) {

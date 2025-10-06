@@ -157,11 +157,14 @@ class VehicleCreate(BaseModel):
 class OrderItem(BaseModel):
     vehicle_id: str
     quantity: int = 1
-    daily_rate: float
+    daily_rate: float  # Prix journalier modifiable
+    total_days: int = 1  # Nombre de jours calculé
     is_renewable: bool = False
     rental_period: Optional[RentalPeriod] = None
     rental_duration: Optional[int] = None
-    end_date: Optional[datetime] = None
+    start_date: datetime
+    end_date: datetime
+    item_total_ht: float = 0  # Total HT pour cet item
 
 class Order(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))

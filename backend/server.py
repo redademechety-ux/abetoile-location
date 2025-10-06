@@ -705,6 +705,33 @@ async def delete_payment(
     
     return {"message": "Payment deleted successfully"}
 
+@api_router.put("/invoices/{invoice_id}/payment")
+async def mark_invoice_paid(
+    invoice_id: str,
+    payment_date: datetime,
+    current_user: User = Depends(get_current_user)
+):
+    """Legacy endpoint - marks invoice as fully paid with single payment"""
+    invoice = await db.invoices.find_one({"id": invoice_id})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    total_amount = invoice.get('grand_total', invoice.get('total_ttc', 0))
+    current_paid = invoice.get('amount_paid', 0)
+    remaining = total_amount - current_paid
+    
+    if remaining > 0:
+        # Create payment for remaining amount
+        payment_data = PaymentCreate(
+            amount=remaining,
+            payment_date=payment_date,
+            payment_method="bank",
+            notes="Full payment (legacy endpoint)"
+        )
+        await add_payment(invoice_id, payment_data, current_user)
+    
+    return {"message": "Invoice marked as paid"}
+
 # PDF Generation endpoints
 @api_router.post("/invoices/{invoice_id}/generate-pdf")
 async def generate_invoice_pdf(invoice_id: str, current_user: User = Depends(get_current_user)):

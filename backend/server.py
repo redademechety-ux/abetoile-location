@@ -541,7 +541,7 @@ async def get_overdue_invoices(current_user: User = Depends(get_current_user)):
     return [Invoice(**parse_from_mongo(invoice)) for invoice in invoices]
 
 @api_router.put("/invoices/{invoice_id}/mark-paid")
-async def mark_invoice_paid(invoice_id: str, current_user: User = Depends(get_current_user)):
+async def mark_invoice_paid_legacy(invoice_id: str, current_user: User = Depends(get_current_user)):
     # Get invoice
     invoice = await db.invoices.find_one({"id": invoice_id})
     if not invoice:

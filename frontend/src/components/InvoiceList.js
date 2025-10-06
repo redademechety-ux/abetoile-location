@@ -348,6 +348,15 @@ const InvoiceList = () => {
           )}
         </div>
       </div>
+
+      {/* Modal de gestion des paiements */}
+      {showPayments && selectedInvoice && (
+        <InvoicePayments
+          invoice={selectedInvoice}
+          onClose={() => setShowPayments(false)}
+          onPaymentUpdate={handlePaymentUpdate}
+        />
+      )}
     </div>
   );
 };

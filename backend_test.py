@@ -1453,6 +1453,18 @@ def main():
         ("Email - Invoice Notification", tester.test_send_invoice_notification),
         ("Email - Payment Reminder Standard", tester.test_send_payment_reminder_standard),
         ("Email - Payment Reminder Urgent", tester.test_send_payment_reminder_urgent),
+        
+        # NEW ENHANCED FEATURES TESTS - Order and Payment Management
+        ("Enhanced Order - Create with Deposit", tester.test_enhanced_order_creation_with_deposit),
+        ("Enhanced Order - Verify Invoice Creation", tester.test_get_invoice_from_enhanced_order),
+        ("Payment Management - Add Partial Payment", tester.test_add_partial_payment),
+        ("Payment Management - Add Final Payment", tester.test_add_second_payment),
+        ("Payment Management - Get All Payments", tester.test_get_invoice_payments),
+        ("Payment Management - Verify Invoice Status", tester.test_verify_invoice_status_after_payments),
+        ("Payment Management - Delete Payment", tester.test_delete_payment),
+        ("Order Renewal - Trigger Process", tester.test_order_renewal_process),
+        ("Payment Edge Cases - Validation", tester.test_payment_edge_cases),
+        ("Complex Order - Multiple Items", tester.test_complex_order_multiple_items),
     ]
     
     # Run all tests

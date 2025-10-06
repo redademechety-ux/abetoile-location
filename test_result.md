@@ -267,6 +267,30 @@ backend:
         -agent: "testing"
         -comment: "TESTED: All enhanced order and payment management features are WORKING PERFECTLY with 100% success rate (15/15 tests). Enhanced Order Creation: Dynamic day calculation, deposit handling (200€ + VAT), grand total calculations all accurate. Multiple Payment Management: Partial payments, payment tracking, invoice status updates (draft→partially_paid→paid) fully functional. Payment Deletion: Successfully removes payments and updates invoice status. Order Renewal: Automatic renewal with dynamic day calculation operational. Payment Edge Cases: Negative amounts and overpayments properly rejected. Complex Multi-Item Orders: Multiple items with different date ranges calculated correctly. Fixed backward compatibility issue with existing invoices. All features production-ready."
 
+  - task: "Order renewability toggle functionality"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: Order renewability toggle functionality (PATCH /api/orders/{order_id}/renewal) is WORKING PERFECTLY. Successfully tested enabling renewability with monthly period (is_renewable=true, rental_period='months', rental_duration=1) and disabling renewability (is_renewable=false with parameters cleared). All items in orders are properly updated. French success messages returned correctly ('Reconductibilité activée/désactivée avec succès'). Parameter handling works correctly - when disabled, rental_period and rental_duration are set to null. Error handling for non-existent orders returns proper 404 responses."
+
+  - task: "Order update functionality"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: Order update functionality (PUT /api/orders/{order_id}) is WORKING PERFECTLY. Successfully updated existing order with new items, dates, quantities, and rates. Dynamic day calculation works correctly (10 days calculated from date range). Deposit and total calculations are accurate (1100€ HT + 220€ VAT + 250€ deposit + 50€ deposit VAT = 1620€ total). Renewability settings are preserved during updates (is_renewable=true, rental_period='weeks', rental_duration=2). Error handling for non-existent orders returns proper 404 responses. All calculations verified and correct."
+
 frontend:
   - task: "Fix PDF document viewing UI"
     implemented: true

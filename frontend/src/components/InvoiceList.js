@@ -13,6 +13,8 @@ const InvoiceList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
   const [generatingPdf, setGeneratingPdf] = useState({});
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [showPayments, setShowPayments] = useState(false);
 
   useEffect(() => {
     fetchData();

@@ -1644,6 +1644,16 @@ async def delete_client_document(
     
     return {"message": "Document deleted successfully"}
 
+# Order renewal endpoint
+@api_router.post("/orders/renew")
+async def trigger_order_renewal(current_user: User = Depends(get_current_user)):
+    """Manually trigger order renewal process"""
+    try:
+        await renew_orders()
+        return {"message": "Order renewal process completed successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error during renewal: {str(e)}")
+
 # Include router
 app.include_router(api_router)
 

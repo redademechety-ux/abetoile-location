@@ -166,6 +166,13 @@ const OrderList = () => {
                           >
                             <Eye size={16} />
                           </button>
+                          <button
+                            onClick={() => handleToggleRenewal(order)}
+                            className={`btn btn-sm ${order.items?.some(item => item.is_renewable) ? 'btn-warning' : 'btn-success'}`}
+                            title={order.items?.some(item => item.is_renewable) ? 'Désactiver la reconductibilité' : 'Activer la reconductibilité'}
+                          >
+                            {order.items?.some(item => item.is_renewable) ? '🔄❌' : '🔄✅'}
+                          </button>
                         </div>
                       </td>
                     </tr>

@@ -66,44 +66,92 @@ const Dashboard = () => {
       )}
 
       {/* Statistiques principales */}
-      <div className="dashboard-grid">
-        <div className="stat-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="stat-number">{dashboardData.total_clients}</div>
-              <div className="stat-label">Clients actifs</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Users size={32} className="text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <div className="text-sm font-medium text-gray-500">Clients</div>
+                <div className="text-2xl font-semibold text-gray-900">{dashboardData.stats?.clients || dashboardData.total_clients || 0}</div>
+              </div>
             </div>
-            <Users className="text-blue-500" size={40} />
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="stat-number">{dashboardData.total_vehicles}</div>
-              <div className="stat-label">Véhicules</div>
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Truck size={32} className="text-green-600" />
+              </div>
+              <div className="ml-4">
+                <div className="text-sm font-medium text-gray-500">Véhicules</div>
+                <div className="text-2xl font-semibold text-gray-900">{dashboardData.stats?.vehicles || dashboardData.total_vehicles || 0}</div>
+              </div>
             </div>
-            <Car className="text-green-500" size={40} />
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="stat-number">{dashboardData.active_orders}</div>
-              <div className="stat-label">Commandes actives</div>
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <ShoppingCart size={32} className="text-yellow-600" />
+              </div>
+              <div className="ml-4">
+                <div className="text-sm font-medium text-gray-500">Commandes</div>
+                <div className="text-2xl font-semibold text-gray-900">{dashboardData.stats?.orders || dashboardData.active_orders || 0}</div>
+              </div>
             </div>
-            <FileText className="text-purple-500" size={40} />
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="stat-number text-red-600">{dashboardData.overdue_invoices}</div>
-              <div className="stat-label">Factures impayées</div>
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <AlertTriangle size={32} className="text-red-600" />
+              </div>
+              <div className="ml-4">
+                <div className="text-sm font-medium text-gray-500">Factures en retard</div>
+                <div className="text-2xl font-semibold text-gray-900">{dashboardData.stats?.overdue_invoices || dashboardData.overdue_invoices || 0}</div>
+              </div>
             </div>
-            <Receipt className="text-red-500" size={40} />
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <DollarSign size={32} className="text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <div className="text-sm font-medium text-gray-500">CA du mois</div>
+                <div className="text-2xl font-semibold text-gray-900">
+                  {dashboardData.stats?.monthly_revenue ? `${dashboardData.stats.monthly_revenue.toFixed(0)} €` : '0 €'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-content">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <TrendingUp size={32} className="text-indigo-600" />
+              </div>
+              <div className="ml-4">
+                <div className="text-sm font-medium text-gray-500">CA de l'année</div>
+                <div className="text-2xl font-semibold text-gray-900">
+                  {dashboardData.stats?.yearly_revenue ? `${dashboardData.stats.yearly_revenue.toFixed(0)} €` : '0 €'}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

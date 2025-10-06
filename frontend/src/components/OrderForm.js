@@ -446,7 +446,67 @@ const OrderForm = () => {
               <h2 className="card-title">Récapitulatif</h2>
             </div>
             <div className="card-content">
-              <div className="space-y-2">
+              <div className="space-y-4">
+                {/* Détail par article */}
+                <div className="space-y-2">
+                  {formData.items.map((item, index) => (
+                    <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <div className="flex-1">
+                        <div className="font-medium">
+                          {vehicles.find(v => v.id === item.vehicle_id)?.brand} {vehicles.find(v => v.id === item.vehicle_id)?.model}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {calculateDays(item.start_date, item.end_date)} jour{calculateDays(item.start_date, item.end_date) > 1 ? 's' : ''} × {item.quantity} × {item.daily_rate.toFixed(2)}€
+                        </div>
+                      </div>
+                      <div className="font-bold">
+                        {calculateItemTotal(item).toFixed(2)} €
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Totaux */}
+                <div className="border-t pt-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span>Sous-total location (HT)</span>
+                      <span className="font-medium">
+                        {formData.items.reduce((sum, item) => sum + calculateItemTotal(item), 0).toFixed(2)} €
+                      </span>
+                    </div>
+                    
+                    {formData.deposit_amount > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span>Caution</span>
+                        <span className="font-medium">
+                          {formData.deposit_amount.toFixed(2)} €
+                        </span>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
+                      <span>Total</span>
+                      <span>
+                        {calculateOrderTotal().toFixed(2)} €
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded">
+                  <h4 className="font-medium text-blue-800 mb-2">Informations importantes</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• Les montants sont calculés en fonction du nombre de jours réels</li>
+                    <li>• La TVA sera calculée selon le taux client lors de la facturation</li>
+                    {formData.items.some(item => item.is_renewable) && (
+                      <li>• Les locations reconductibles génèreront automatiquement de nouvelles factures</li>
+                    )}
+                    {formData.deposit_amount > 0 && (
+                      <li>• La caution sera facturée en plus du montant de location</li>
+                    )}
+                  </ul>
+                </div>
                 <div className="flex justify-between">
                   <span>Total HT:</span>
                   <span className="font-medium">{totals.total.toFixed(2)} €</span>

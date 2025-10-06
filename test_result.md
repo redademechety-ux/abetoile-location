@@ -354,7 +354,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Enhanced order and payment management features - COMPLETED"
+    - "Order renewability management functionality - COMPLETED"
+    - "Order update functionality - COMPLETED"
     - "All new integration features tested and working"
   stuck_tasks: []
   test_all: false

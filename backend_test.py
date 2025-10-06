@@ -2311,6 +2311,20 @@ def main():
         ("Order Renewability - Verify Disabled", tester.test_verify_renewability_disabled),
         ("Order Update - Update Existing Order", tester.test_update_existing_order),
         ("Order Renewability - Error Handling", tester.test_renewability_error_handling),
+        
+        # NEW MAJOR FEATURES TESTS - As requested in review
+        ("Enhanced Dashboard - Revenue Calculations", tester.test_enhanced_dashboard_with_revenue),
+        ("Vehicle Type VAN - Create Vehicle", tester.test_vehicle_type_van_creation),
+        ("Vehicle Type VAN - Update Existing", tester.test_vehicle_type_van_update),
+        ("Maintenance CRUD - Create Record", tester.test_maintenance_records_crud_create),
+        ("Maintenance CRUD - Get All Records", tester.test_maintenance_records_crud_read_all),
+        ("Maintenance CRUD - Get Specific Record", tester.test_maintenance_records_crud_read_specific),
+        ("Maintenance CRUD - Update Record", tester.test_maintenance_records_crud_update),
+        ("Maintenance Documents - Upload PDF", tester.test_maintenance_document_upload),
+        ("Maintenance Documents - List Documents", tester.test_maintenance_document_list),
+        ("Maintenance Documents - Download Document", tester.test_maintenance_document_download),
+        ("Maintenance Documents - Delete Document", tester.test_maintenance_document_delete),
+        ("Maintenance CRUD - Delete Record", tester.test_maintenance_records_crud_delete),
     ]
     
     # Run all tests

@@ -136,44 +136,69 @@ const MaintenanceForm = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    console.log('📄 Démarrage upload fichier:', file.name, 'Type:', file.type, 'Taille:', file.size);
+
     // Vérifier le type de fichier
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
     if (!allowedTypes.includes(file.type)) {
-      setError('Type de fichier non autorisé. Seuls PDF, JPG et PNG sont acceptés.');
+      const errorMsg = `Type de fichier non autorisé: ${file.type}. Seuls PDF, JPG et PNG sont acceptés.`;
+      console.error('❌', errorMsg);
+      setError(errorMsg);
       return;
     }
 
     // Vérifier la taille (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      setError('Fichier trop volumineux (max 10MB)');
+      const errorMsg = `Fichier trop volumineux: ${(file.size / 1024 / 1024).toFixed(2)}MB (max 10MB)`;
+      console.error('❌', errorMsg);
+      setError(errorMsg);
       return;
     }
 
-    if (!isEdit) {
-      setError('Veuillez d\'abord sauvegarder l\'enregistrement avant d\'ajouter des documents.');
+    if (!isEdit || !id) {
+      const errorMsg = 'Veuillez d\'abord sauvegarder l\'enregistrement avant d\'ajouter des documents.';
+      console.error('❌', errorMsg);
+      setError(errorMsg);
       return;
     }
 
     setUploadingFile(true);
     setError('');
+    setSuccess('');
 
     try {
+      console.log('🚀 Préparation FormData...');
       const formData = new FormData();
       formData.append('file', file);
       formData.append('label', file.name);
 
-      await axios.post(`${API}/maintenance/${id}/documents`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      console.log('📡 Envoi vers:', `${API}/maintenance/${id}/documents`);
+      
+      // Ne pas définir Content-Type manuellement pour multipart/form-data
+      const response = await axios.post(`${API}/maintenance/${id}/documents`, formData);
 
-      setSuccess('Document téléchargé avec succès');
+      console.log('✅ Réponse reçue:', response.status, response.data);
+      setSuccess(`Document "${file.name}" téléchargé avec succès`);
       fetchDocuments(); // Recharger la liste des documents
       e.target.value = ''; // Reset le champ file
     } catch (error) {
-      console.error('Erreur lors du téléchargement:', error);
-      setError(error.response?.data?.detail || 'Erreur lors du téléchargement du document');
+      console.error('❌ Erreur lors du téléchargement:', error);
+      
+      let errorMessage = 'Erreur lors du téléchargement du document';
+      
+      if (error.response) {
+        console.error('Status:', error.response.status);
+        console.error('Data:', error.response.data);
+        errorMessage = error.response.data?.detail || `Erreur serveur (${error.response.status})`;
+      } else if (error.request) {
+        console.error('Pas de réponse du serveur:', error.request);
+        errorMessage = 'Pas de réponse du serveur. Vérifiez votre connexion.';
+      } else {
+        console.error('Erreur de configuration:', error.message);
+        errorMessage = `Erreur de configuration: ${error.message}`;
+      }
+      
+      setError(errorMessage);
     } finally {
       setUploadingFile(false);
     }

@@ -2,8 +2,29 @@
 
 echo "🔧 CORRECTION: Ajout du bouton d'upload manquant dans Maintenance..."
 
+# S'assurer qu'on est dans le bon répertoire
+echo "📁 Vérification du répertoire de travail..."
+if [ ! -d "/app" ]; then
+    echo "❌ Répertoire /app introuvable"
+    exit 1
+fi
+
+cd /app
+
+if [ ! -d "/app/frontend" ]; then
+    echo "❌ Répertoire /app/frontend introuvable"
+    exit 1
+fi
+
 echo "📦 Reconstruction du frontend avec le bouton d'upload..."
 cd /app/frontend
+
+if [ ! -f "package.json" ]; then
+    echo "❌ Fichier package.json introuvable dans /app/frontend"
+    ls -la
+    exit 1
+fi
+
 yarn build
 
 if [ $? -eq 0 ]; then

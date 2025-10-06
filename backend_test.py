@@ -193,6 +193,10 @@ class AutoProAPITester:
             print("❌ Skipping - Missing client or vehicle ID")
             return False
             
+        # Fix: Add required start_date and end_date to items
+        start_date = datetime.now(timezone.utc) + timedelta(days=1)
+        end_date = start_date + timedelta(days=6)  # 7 days total
+            
         order_data = {
             "client_id": self.test_data['client_id'],
             "items": [
@@ -202,10 +206,11 @@ class AutoProAPITester:
                     "daily_rate": 45.0,
                     "is_renewable": True,
                     "rental_period": "days",
-                    "rental_duration": 7
+                    "rental_duration": 7,
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat()
                 }
-            ],
-            "start_date": "2024-12-01T00:00:00Z"
+            ]
         }
         success, response = self.run_test(
             "Create Order",

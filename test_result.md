@@ -330,6 +330,7 @@ metadata:
 
 test_plan:
   current_focus:
+    - "Enhanced order and payment management features - COMPLETED"
     - "All new integration features tested and working"
   stuck_tasks: []
   test_all: false

@@ -225,10 +225,15 @@ const OrderList = () => {
                           </button>
                           <button
                             onClick={() => handleToggleRenewal(order)}
+                            disabled={renewalLoading[order.id]}
                             className={`btn btn-sm ${order.items?.some(item => item.is_renewable) ? 'btn-warning' : 'btn-success'}`}
                             title={order.items?.some(item => item.is_renewable) ? 'Désactiver la reconductibilité' : 'Activer la reconductibilité'}
                           >
-                            {order.items?.some(item => item.is_renewable) ? '🔄❌' : '🔄✅'}
+                            {renewalLoading[order.id] ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            ) : (
+                              order.items?.some(item => item.is_renewable) ? '🔄❌' : '🔄✅'
+                            )}
                           </button>
                         </div>
                       </td>

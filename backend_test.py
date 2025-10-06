@@ -1388,6 +1388,341 @@ class AutoProAPITester:
                 
         return success
 
+    # NEW ORDER RENEWABILITY MANAGEMENT TESTS
+    
+    def test_create_order_for_renewability_tests(self):
+        """Create a specific order for renewability testing"""
+        if 'client_id' not in self.test_data or 'vehicle_id' not in self.test_data:
+            print("❌ Skipping - Missing client or vehicle ID")
+            return False
+            
+        start_date = datetime.now(timezone.utc) + timedelta(days=1)
+        end_date = start_date + timedelta(days=6)  # 7 days total
+            
+        order_data = {
+            "client_id": self.test_data['client_id'],
+            "deposit_amount": 150.0,
+            "items": [
+                {
+                    "vehicle_id": self.test_data['vehicle_id'],
+                    "quantity": 1,
+                    "daily_rate": 40.0,
+                    "is_renewable": False,  # Start as non-renewable
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat()
+                }
+            ]
+        }
+        
+        success, response = self.run_test(
+            "Create Order for Renewability Tests",
+            "POST",
+            "orders",
+            200,
+            data=order_data
+        )
+        
+        if success:
+            self.test_data['renewability_order_id'] = response.get('id')
+            print(f"   Renewability Test Order ID: {response.get('id')}")
+            
+            # Verify initial renewability status
+            items = response.get('items', [])
+            if items:
+                item = items[0]
+                print(f"   Initial renewability: {item.get('is_renewable', False)}")
+                print(f"   Initial rental_period: {item.get('rental_period', 'None')}")
+                print(f"   Initial rental_duration: {item.get('rental_duration', 'None')}")
+                
+        return success
+
+    def test_enable_order_renewability(self):
+        """Test enabling renewability for an existing order"""
+        if 'renewability_order_id' not in self.test_data:
+            print("❌ Skipping - No renewability order ID available")
+            return False
+            
+        renewal_data = {
+            "is_renewable": True,
+            "rental_period": "months",
+            "rental_duration": 1
+        }
+        
+        success, response = self.run_test(
+            "Enable Order Renewability",
+            "PATCH",
+            f"orders/{self.test_data['renewability_order_id']}/renewal",
+            200,
+            data=renewal_data
+        )
+        
+        if success:
+            print(f"   Response message: {response.get('message', 'N/A')}")
+            print(f"   Order ID: {response.get('order_id')}")
+            print(f"   Renewability enabled: {response.get('is_renewable', False)}")
+            
+            # Verify the French success message
+            expected_message = "Reconductibilité activée avec succès"
+            actual_message = response.get('message', '')
+            if expected_message in actual_message:
+                print("   ✅ French success message returned correctly")
+            else:
+                print(f"   ⚠️  Expected French message, got: {actual_message}")
+                
+        return success
+
+    def test_verify_renewability_enabled(self):
+        """Verify that renewability was properly enabled for all items"""
+        if 'renewability_order_id' not in self.test_data:
+            print("❌ Skipping - No renewability order ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Verify Renewability Enabled",
+            "GET",
+            f"orders",
+            200
+        )
+        
+        if success:
+            # Find our renewability test order
+            renewability_order = None
+            for order in response:
+                if order.get('id') == self.test_data['renewability_order_id']:
+                    renewability_order = order
+                    break
+            
+            if renewability_order:
+                items = renewability_order.get('items', [])
+                print(f"   Found order with {len(items)} items")
+                
+                all_renewable = True
+                for i, item in enumerate(items, 1):
+                    is_renewable = item.get('is_renewable', False)
+                    rental_period = item.get('rental_period')
+                    rental_duration = item.get('rental_duration')
+                    
+                    print(f"   Item {i} - Renewable: {is_renewable}, Period: {rental_period}, Duration: {rental_duration}")
+                    
+                    if not is_renewable or rental_period != "months" or rental_duration != 1:
+                        all_renewable = False
+                
+                if all_renewable:
+                    print("   ✅ All items properly configured as renewable")
+                else:
+                    print("   ❌ Some items not properly configured")
+                    
+                return all_renewable
+            else:
+                print("❌ Renewability order not found")
+                return False
+        
+        return success
+
+    def test_disable_order_renewability(self):
+        """Test disabling renewability for an existing order"""
+        if 'renewability_order_id' not in self.test_data:
+            print("❌ Skipping - No renewability order ID available")
+            return False
+            
+        renewal_data = {
+            "is_renewable": False
+        }
+        
+        success, response = self.run_test(
+            "Disable Order Renewability",
+            "PATCH",
+            f"orders/{self.test_data['renewability_order_id']}/renewal",
+            200,
+            data=renewal_data
+        )
+        
+        if success:
+            print(f"   Response message: {response.get('message', 'N/A')}")
+            print(f"   Order ID: {response.get('order_id')}")
+            print(f"   Renewability disabled: {not response.get('is_renewable', True)}")
+            
+            # Verify the French success message
+            expected_message = "Reconductibilité désactivée avec succès"
+            actual_message = response.get('message', '')
+            if expected_message in actual_message:
+                print("   ✅ French success message returned correctly")
+            else:
+                print(f"   ⚠️  Expected French message, got: {actual_message}")
+                
+        return success
+
+    def test_verify_renewability_disabled(self):
+        """Verify that renewability was properly disabled and parameters cleared"""
+        if 'renewability_order_id' not in self.test_data:
+            print("❌ Skipping - No renewability order ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Verify Renewability Disabled",
+            "GET",
+            f"orders",
+            200
+        )
+        
+        if success:
+            # Find our renewability test order
+            renewability_order = None
+            for order in response:
+                if order.get('id') == self.test_data['renewability_order_id']:
+                    renewability_order = order
+                    break
+            
+            if renewability_order:
+                items = renewability_order.get('items', [])
+                print(f"   Found order with {len(items)} items")
+                
+                all_non_renewable = True
+                for i, item in enumerate(items, 1):
+                    is_renewable = item.get('is_renewable', True)
+                    rental_period = item.get('rental_period')
+                    rental_duration = item.get('rental_duration')
+                    
+                    print(f"   Item {i} - Renewable: {is_renewable}, Period: {rental_period}, Duration: {rental_duration}")
+                    
+                    if is_renewable or rental_period is not None or rental_duration is not None:
+                        all_non_renewable = False
+                
+                if all_non_renewable:
+                    print("   ✅ All items properly configured as non-renewable with cleared parameters")
+                else:
+                    print("   ❌ Some items still have renewability settings")
+                    
+                return all_non_renewable
+            else:
+                print("❌ Renewability order not found")
+                return False
+        
+        return success
+
+    def test_update_existing_order(self):
+        """Test updating an existing order with new items and dates"""
+        if 'renewability_order_id' not in self.test_data or 'client_id' not in self.test_data or 'vehicle_id' not in self.test_data:
+            print("❌ Skipping - Missing required IDs")
+            return False
+            
+        # Update with new dates and modified items
+        start_date = datetime.now(timezone.utc) + timedelta(days=2)
+        end_date = start_date + timedelta(days=9)  # 10 days total
+            
+        updated_order_data = {
+            "client_id": self.test_data['client_id'],
+            "deposit_amount": 250.0,  # Changed deposit
+            "items": [
+                {
+                    "vehicle_id": self.test_data['vehicle_id'],
+                    "quantity": 2,  # Changed quantity
+                    "daily_rate": 55.0,  # Changed rate
+                    "is_renewable": True,
+                    "rental_period": "weeks",
+                    "rental_duration": 2,
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat()
+                }
+            ]
+        }
+        
+        success, response = self.run_test(
+            "Update Existing Order",
+            "PUT",
+            f"orders/{self.test_data['renewability_order_id']}",
+            200,
+            data=updated_order_data
+        )
+        
+        if success:
+            # Verify updated calculations
+            # 10 days × 55€ × 2 = 1100€ HT
+            # VAT (20%): 220€
+            # Total TTC: 1320€
+            # Deposit: 250€
+            # Deposit VAT: 50€
+            # Grand Total: 1620€
+            
+            expected_total_ht = 10 * 55.0 * 2  # 1100€
+            expected_vat = expected_total_ht * 0.20  # 220€
+            expected_total_ttc = expected_total_ht + expected_vat  # 1320€
+            expected_deposit_vat = 250.0 * 0.20  # 50€
+            expected_grand_total = expected_total_ttc + 250.0 + expected_deposit_vat  # 1620€
+            
+            print(f"   Updated Order ID: {response.get('id')}")
+            print(f"   Total HT: {response.get('total_ht', 0):.2f}€ (expected: {expected_total_ht:.2f}€)")
+            print(f"   Total VAT: {response.get('total_vat', 0):.2f}€ (expected: {expected_vat:.2f}€)")
+            print(f"   Total TTC: {response.get('total_ttc', 0):.2f}€ (expected: {expected_total_ttc:.2f}€)")
+            print(f"   Deposit: {response.get('deposit_amount', 0):.2f}€")
+            print(f"   Grand Total: {response.get('grand_total', 0):.2f}€ (expected: {expected_grand_total:.2f}€)")
+            
+            # Verify item calculations
+            items = response.get('items', [])
+            if items:
+                item = items[0]
+                print(f"   Item total days: {item.get('total_days', 0)} (expected: 10)")
+                print(f"   Item quantity: {item.get('quantity', 0)} (expected: 2)")
+                print(f"   Item daily rate: {item.get('daily_rate', 0):.2f}€ (expected: 55.00€)")
+                print(f"   Item renewability: {item.get('is_renewable', False)} (expected: True)")
+                print(f"   Item rental period: {item.get('rental_period')} (expected: weeks)")
+                print(f"   Item rental duration: {item.get('rental_duration')} (expected: 2)")
+            
+            # Verify calculations are correct
+            calculations_correct = (
+                abs(response.get('total_ht', 0) - expected_total_ht) < 0.01 and
+                abs(response.get('grand_total', 0) - expected_grand_total) < 0.01
+            )
+            
+            if calculations_correct:
+                print("   ✅ Order update calculations are correct!")
+            else:
+                print("   ❌ Order update calculation errors detected!")
+                
+        return success
+
+    def test_renewability_error_handling(self):
+        """Test error handling for renewability operations"""
+        # Test 1: Try to update renewability for non-existent order
+        fake_order_id = "non-existent-order-id"
+        renewal_data = {
+            "is_renewable": True,
+            "rental_period": "days",
+            "rental_duration": 7
+        }
+        
+        success1, response1 = self.run_test(
+            "Renewability Error - Non-existent Order",
+            "PATCH",
+            f"orders/{fake_order_id}/renewal",
+            404,  # Should return 404
+            data=renewal_data
+        )
+        
+        if success1:
+            print("   ✅ Correctly returned 404 for non-existent order")
+            print(f"   Error detail: {response1.get('detail', 'N/A')}")
+        
+        # Test 2: Try to update non-existent order
+        updated_order_data = {
+            "client_id": self.test_data.get('client_id', 'fake-id'),
+            "items": []
+        }
+        
+        success2, response2 = self.run_test(
+            "Order Update Error - Non-existent Order",
+            "PUT",
+            f"orders/{fake_order_id}",
+            404,  # Should return 404
+            data=updated_order_data
+        )
+        
+        if success2:
+            print("   ✅ Correctly returned 404 for non-existent order update")
+            print(f"   Error detail: {response2.get('detail', 'N/A')}")
+        
+        return success1 and success2
+
 def main():
     print("🚀 Starting AutoPro Rental API Tests")
     print("=" * 50)

@@ -115,6 +115,18 @@ const OrderList = () => {
         </Link>
       </div>
 
+      {/* Messages d'erreur et de succès */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+          {success}
+        </div>
+      )}
+
       {/* Barre de recherche */}
       <div className="card">
         <div className="card-content">

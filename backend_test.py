@@ -912,6 +912,477 @@ class AutoProAPITester:
         
         return success
 
+    # NEW ENHANCED FEATURES TESTS - Order and Payment Management
+    
+    def test_enhanced_order_creation_with_deposit(self):
+        """Test enhanced order creation with deposit and complex pricing"""
+        if 'client_id' not in self.test_data or 'vehicle_id' not in self.test_data:
+            print("❌ Skipping - Missing client or vehicle ID")
+            return False
+            
+        # Test scenario: 1 item for 5 days at 50€/day + 200€ deposit
+        start_date = datetime.now(timezone.utc) + timedelta(days=1)
+        end_date = start_date + timedelta(days=4)  # 5 days total (inclusive)
+        
+        order_data = {
+            "client_id": self.test_data['client_id'],
+            "deposit_amount": 200.0,
+            "items": [
+                {
+                    "vehicle_id": self.test_data['vehicle_id'],
+                    "quantity": 1,
+                    "daily_rate": 50.0,
+                    "is_renewable": True,
+                    "rental_period": "days",
+                    "rental_duration": 5,
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat()
+                }
+            ]
+        }
+        
+        success, response = self.run_test(
+            "Enhanced Order Creation - With Deposit",
+            "POST",
+            "orders",
+            200,
+            data=order_data
+        )
+        
+        if success:
+            # Verify calculations
+            expected_total_ht = 5 * 50.0  # 5 days × 50€ = 250€
+            expected_vat = expected_total_ht * 0.20  # 20% VAT = 50€
+            expected_total_ttc = expected_total_ht + expected_vat  # 300€
+            expected_deposit_vat = 200.0 * 0.20  # 40€
+            expected_grand_total = expected_total_ttc + 200.0 + expected_deposit_vat  # 540€
+            
+            print(f"   Order ID: {response.get('id')}")
+            print(f"   Total HT: {response.get('total_ht', 0):.2f}€ (expected: {expected_total_ht:.2f}€)")
+            print(f"   Total VAT: {response.get('total_vat', 0):.2f}€ (expected: {expected_vat:.2f}€)")
+            print(f"   Total TTC: {response.get('total_ttc', 0):.2f}€ (expected: {expected_total_ttc:.2f}€)")
+            print(f"   Deposit: {response.get('deposit_amount', 0):.2f}€")
+            print(f"   Deposit VAT: {response.get('deposit_vat', 0):.2f}€ (expected: {expected_deposit_vat:.2f}€)")
+            print(f"   Grand Total: {response.get('grand_total', 0):.2f}€ (expected: {expected_grand_total:.2f}€)")
+            
+            # Verify item calculations
+            items = response.get('items', [])
+            if items:
+                item = items[0]
+                print(f"   Item total days: {item.get('total_days', 0)} (expected: 5)")
+                print(f"   Item total HT: {item.get('item_total_ht', 0):.2f}€ (expected: {expected_total_ht:.2f}€)")
+            
+            # Store for payment tests
+            self.test_data['enhanced_order_id'] = response.get('id')
+            
+            # Verify calculations are correct
+            calculations_correct = (
+                abs(response.get('total_ht', 0) - expected_total_ht) < 0.01 and
+                abs(response.get('total_vat', 0) - expected_vat) < 0.01 and
+                abs(response.get('total_ttc', 0) - expected_total_ttc) < 0.01 and
+                abs(response.get('deposit_vat', 0) - expected_deposit_vat) < 0.01 and
+                abs(response.get('grand_total', 0) - expected_grand_total) < 0.01
+            )
+            
+            if calculations_correct:
+                print("   ✅ All calculations are correct!")
+            else:
+                print("   ❌ Calculation errors detected!")
+                
+        return success
+
+    def test_get_invoice_from_enhanced_order(self):
+        """Test that invoice is created from enhanced order with correct structure"""
+        if 'enhanced_order_id' not in self.test_data:
+            print("❌ Skipping - No enhanced order ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Get Invoices - Enhanced Order",
+            "GET",
+            "invoices",
+            200
+        )
+        
+        if success:
+            # Find invoice for our enhanced order
+            enhanced_invoice = None
+            for invoice in response:
+                if invoice.get('order_id') == self.test_data['enhanced_order_id']:
+                    enhanced_invoice = invoice
+                    break
+            
+            if enhanced_invoice:
+                print(f"   Found invoice for enhanced order: {enhanced_invoice.get('invoice_number')}")
+                print(f"   Invoice deposit amount: {enhanced_invoice.get('deposit_amount', 0):.2f}€")
+                print(f"   Invoice deposit VAT: {enhanced_invoice.get('deposit_vat', 0):.2f}€")
+                print(f"   Invoice grand total: {enhanced_invoice.get('grand_total', 0):.2f}€")
+                print(f"   Invoice remaining amount: {enhanced_invoice.get('remaining_amount', 0):.2f}€")
+                print(f"   Invoice status: {enhanced_invoice.get('status')}")
+                
+                # Store for payment tests
+                self.test_data['enhanced_invoice_id'] = enhanced_invoice.get('id')
+                self.test_data['enhanced_invoice_total'] = enhanced_invoice.get('grand_total', 0)
+                
+                return True
+            else:
+                print("❌ No invoice found for enhanced order")
+                return False
+        
+        return success
+
+    def test_add_partial_payment(self):
+        """Test adding partial payment to invoice"""
+        if 'enhanced_invoice_id' not in self.test_data:
+            print("❌ Skipping - No enhanced invoice ID available")
+            return False
+            
+        payment_data = {
+            "amount": 100.0,
+            "payment_date": datetime.now(timezone.utc).isoformat(),
+            "payment_method": "bank",
+            "reference": "BANK001",
+            "notes": "First partial payment"
+        }
+        
+        success, response = self.run_test(
+            "Add Partial Payment",
+            "POST",
+            f"invoices/{self.test_data['enhanced_invoice_id']}/payments",
+            200,
+            data=payment_data
+        )
+        
+        if success:
+            print(f"   Payment ID: {response.get('id')}")
+            print(f"   Payment amount: {response.get('amount', 0):.2f}€")
+            print(f"   Payment method: {response.get('payment_method')}")
+            print(f"   Payment reference: {response.get('reference')}")
+            
+            # Store payment ID for deletion test
+            self.test_data['partial_payment_id'] = response.get('id')
+            
+        return success
+
+    def test_add_second_payment(self):
+        """Test adding second payment to complete the invoice"""
+        if 'enhanced_invoice_id' not in self.test_data:
+            print("❌ Skipping - No enhanced invoice ID available")
+            return False
+            
+        # Calculate remaining amount (should be total - 100€ from first payment)
+        remaining_amount = self.test_data.get('enhanced_invoice_total', 540.0) - 100.0
+        
+        payment_data = {
+            "amount": remaining_amount,
+            "payment_date": datetime.now(timezone.utc).isoformat(),
+            "payment_method": "card",
+            "reference": "CARD002",
+            "notes": "Final payment to complete invoice"
+        }
+        
+        success, response = self.run_test(
+            "Add Final Payment",
+            "POST",
+            f"invoices/{self.test_data['enhanced_invoice_id']}/payments",
+            200,
+            data=payment_data
+        )
+        
+        if success:
+            print(f"   Payment ID: {response.get('id')}")
+            print(f"   Payment amount: {response.get('amount', 0):.2f}€")
+            print(f"   Payment method: {response.get('payment_method')}")
+            
+            # Store second payment ID
+            self.test_data['final_payment_id'] = response.get('id')
+            
+        return success
+
+    def test_get_invoice_payments(self):
+        """Test getting all payments for an invoice"""
+        if 'enhanced_invoice_id' not in self.test_data:
+            print("❌ Skipping - No enhanced invoice ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Get Invoice Payments",
+            "GET",
+            f"invoices/{self.test_data['enhanced_invoice_id']}/payments",
+            200
+        )
+        
+        if success:
+            print(f"   Found {len(response)} payments")
+            total_paid = sum(payment.get('amount', 0) for payment in response)
+            print(f"   Total amount paid: {total_paid:.2f}€")
+            
+            for i, payment in enumerate(response, 1):
+                print(f"   Payment {i}: {payment.get('amount', 0):.2f}€ via {payment.get('payment_method')} (Ref: {payment.get('reference', 'N/A')})")
+                
+        return success
+
+    def test_verify_invoice_status_after_payments(self):
+        """Test that invoice status is updated correctly after payments"""
+        if 'enhanced_invoice_id' not in self.test_data:
+            print("❌ Skipping - No enhanced invoice ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Get Updated Invoice Status",
+            "GET",
+            "invoices",
+            200
+        )
+        
+        if success:
+            # Find our enhanced invoice
+            enhanced_invoice = None
+            for invoice in response:
+                if invoice.get('id') == self.test_data['enhanced_invoice_id']:
+                    enhanced_invoice = invoice
+                    break
+            
+            if enhanced_invoice:
+                print(f"   Invoice status: {enhanced_invoice.get('status')}")
+                print(f"   Amount paid: {enhanced_invoice.get('amount_paid', 0):.2f}€")
+                print(f"   Remaining amount: {enhanced_invoice.get('remaining_amount', 0):.2f}€")
+                
+                # Should be fully paid
+                expected_status = "paid"
+                actual_status = enhanced_invoice.get('status')
+                
+                if actual_status == expected_status:
+                    print("   ✅ Invoice status correctly updated to 'paid'")
+                else:
+                    print(f"   ❌ Expected status '{expected_status}', got '{actual_status}'")
+                    
+                return actual_status == expected_status
+            else:
+                print("❌ Enhanced invoice not found")
+                return False
+        
+        return success
+
+    def test_delete_payment(self):
+        """Test deleting a payment and verify status updates"""
+        if 'partial_payment_id' not in self.test_data or 'enhanced_invoice_id' not in self.test_data:
+            print("❌ Skipping - No payment or invoice ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Delete Payment",
+            "DELETE",
+            f"payments/{self.test_data['partial_payment_id']}",
+            200
+        )
+        
+        if success:
+            print(f"   Payment deleted successfully")
+            print(f"   Message: {response.get('message', 'N/A')}")
+            
+            # Verify invoice status is updated
+            success2, invoices_response = self.run_test(
+                "Verify Invoice After Payment Deletion",
+                "GET",
+                "invoices",
+                200
+            )
+            
+            if success2:
+                # Find our enhanced invoice
+                enhanced_invoice = None
+                for invoice in invoices_response:
+                    if invoice.get('id') == self.test_data['enhanced_invoice_id']:
+                        enhanced_invoice = invoice
+                        break
+                
+                if enhanced_invoice:
+                    print(f"   Updated invoice status: {enhanced_invoice.get('status')}")
+                    print(f"   Updated amount paid: {enhanced_invoice.get('amount_paid', 0):.2f}€")
+                    print(f"   Updated remaining amount: {enhanced_invoice.get('remaining_amount', 0):.2f}€")
+                    
+                    # Should be partially paid now (only final payment remains)
+                    expected_status = "partially_paid"
+                    actual_status = enhanced_invoice.get('status')
+                    
+                    if actual_status == expected_status:
+                        print("   ✅ Invoice status correctly updated after payment deletion")
+                    else:
+                        print(f"   ❌ Expected status '{expected_status}', got '{actual_status}'")
+                        
+        return success
+
+    def test_order_renewal_process(self):
+        """Test order renewal process with dynamic day calculation"""
+        success, response = self.run_test(
+            "Trigger Order Renewal",
+            "POST",
+            "orders/renew",
+            200
+        )
+        
+        if success:
+            print(f"   Renewal message: {response.get('message', 'N/A')}")
+            print("   ✅ Order renewal process completed successfully")
+            
+        return success
+
+    def test_payment_edge_cases(self):
+        """Test payment edge cases and validation"""
+        if 'enhanced_invoice_id' not in self.test_data:
+            print("❌ Skipping - No enhanced invoice ID available")
+            return False
+            
+        # Test 1: Negative payment amount
+        negative_payment = {
+            "amount": -50.0,
+            "payment_date": datetime.now(timezone.utc).isoformat(),
+            "payment_method": "bank",
+            "notes": "Negative payment test"
+        }
+        
+        success1, response1 = self.run_test(
+            "Payment Edge Case - Negative Amount",
+            "POST",
+            f"invoices/{self.test_data['enhanced_invoice_id']}/payments",
+            400,  # Should fail with 400
+            data=negative_payment
+        )
+        
+        if success1:
+            print("   ✅ Correctly rejected negative payment amount")
+        
+        # Test 2: Payment exceeding remaining balance
+        # First get current invoice state
+        success_inv, invoices_response = self.run_test(
+            "Get Invoice for Overpayment Test",
+            "GET",
+            "invoices",
+            200
+        )
+        
+        if success_inv:
+            enhanced_invoice = None
+            for invoice in invoices_response:
+                if invoice.get('id') == self.test_data['enhanced_invoice_id']:
+                    enhanced_invoice = invoice
+                    break
+            
+            if enhanced_invoice:
+                remaining = enhanced_invoice.get('remaining_amount', 0)
+                overpayment_amount = remaining + 100.0  # Exceed by 100€
+                
+                overpayment = {
+                    "amount": overpayment_amount,
+                    "payment_date": datetime.now(timezone.utc).isoformat(),
+                    "payment_method": "bank",
+                    "notes": "Overpayment test"
+                }
+                
+                success2, response2 = self.run_test(
+                    "Payment Edge Case - Overpayment",
+                    "POST",
+                    f"invoices/{self.test_data['enhanced_invoice_id']}/payments",
+                    400,  # Should fail with 400
+                    data=overpayment
+                )
+                
+                if success2:
+                    print("   ✅ Correctly rejected overpayment")
+                    print(f"   Error message: {response2.get('detail', 'N/A')}")
+        
+        return success1  # Return result of first test
+
+    def test_complex_order_multiple_items(self):
+        """Test order creation with multiple items and different date ranges"""
+        if 'client_id' not in self.test_data or 'vehicle_id' not in self.test_data:
+            print("❌ Skipping - Missing client or vehicle ID")
+            return False
+            
+        # Create complex order with multiple items
+        start_date1 = datetime.now(timezone.utc) + timedelta(days=1)
+        end_date1 = start_date1 + timedelta(days=6)  # 7 days
+        
+        start_date2 = datetime.now(timezone.utc) + timedelta(days=10)
+        end_date2 = start_date2 + timedelta(days=2)  # 3 days
+        
+        order_data = {
+            "client_id": self.test_data['client_id'],
+            "deposit_amount": 300.0,
+            "items": [
+                {
+                    "vehicle_id": self.test_data['vehicle_id'],
+                    "quantity": 1,
+                    "daily_rate": 60.0,
+                    "is_renewable": False,
+                    "start_date": start_date1.isoformat(),
+                    "end_date": end_date1.isoformat()
+                },
+                {
+                    "vehicle_id": self.test_data['vehicle_id'],
+                    "quantity": 2,
+                    "daily_rate": 45.0,
+                    "is_renewable": True,
+                    "rental_period": "days",
+                    "rental_duration": 3,
+                    "start_date": start_date2.isoformat(),
+                    "end_date": end_date2.isoformat()
+                }
+            ]
+        }
+        
+        success, response = self.run_test(
+            "Complex Order - Multiple Items",
+            "POST",
+            "orders",
+            200,
+            data=order_data
+        )
+        
+        if success:
+            # Verify calculations
+            # Item 1: 7 days × 60€ × 1 = 420€
+            # Item 2: 3 days × 45€ × 2 = 270€
+            # Total HT: 690€
+            # VAT (20%): 138€
+            # Total TTC: 828€
+            # Deposit: 300€
+            # Deposit VAT: 60€
+            # Grand Total: 1188€
+            
+            expected_total_ht = (7 * 60.0 * 1) + (3 * 45.0 * 2)  # 420 + 270 = 690€
+            expected_vat = expected_total_ht * 0.20  # 138€
+            expected_total_ttc = expected_total_ht + expected_vat  # 828€
+            expected_deposit_vat = 300.0 * 0.20  # 60€
+            expected_grand_total = expected_total_ttc + 300.0 + expected_deposit_vat  # 1188€
+            
+            print(f"   Complex Order ID: {response.get('id')}")
+            print(f"   Total HT: {response.get('total_ht', 0):.2f}€ (expected: {expected_total_ht:.2f}€)")
+            print(f"   Total VAT: {response.get('total_vat', 0):.2f}€ (expected: {expected_vat:.2f}€)")
+            print(f"   Total TTC: {response.get('total_ttc', 0):.2f}€ (expected: {expected_total_ttc:.2f}€)")
+            print(f"   Grand Total: {response.get('grand_total', 0):.2f}€ (expected: {expected_grand_total:.2f}€)")
+            
+            # Verify item calculations
+            items = response.get('items', [])
+            print(f"   Number of items: {len(items)}")
+            
+            for i, item in enumerate(items, 1):
+                print(f"   Item {i} - Days: {item.get('total_days', 0)}, Total HT: {item.get('item_total_ht', 0):.2f}€")
+            
+            # Verify calculations are correct
+            calculations_correct = (
+                abs(response.get('total_ht', 0) - expected_total_ht) < 0.01 and
+                abs(response.get('grand_total', 0) - expected_grand_total) < 0.01
+            )
+            
+            if calculations_correct:
+                print("   ✅ Complex order calculations are correct!")
+            else:
+                print("   ❌ Complex order calculation errors detected!")
+                
+        return success
+
 def main():
     print("🚀 Starting AutoPro Rental API Tests")
     print("=" * 50)

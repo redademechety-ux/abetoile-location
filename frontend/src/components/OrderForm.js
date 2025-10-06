@@ -13,8 +13,17 @@ const OrderForm = () => {
   const [vehicles, setVehicles] = useState([]);
   const [formData, setFormData] = useState({
     client_id: '',
-    start_date: '',
-    items: []
+    items: [{
+      vehicle_id: '',
+      quantity: 1,
+      daily_rate: 0,
+      is_renewable: false,
+      rental_period: '',
+      rental_duration: 1,
+      start_date: new Date().toISOString().split('T')[0],
+      end_date: new Date().toISOString().split('T')[0]
+    }],
+    deposit_amount: 0
   });
 
   const [loading, setLoading] = useState(true);

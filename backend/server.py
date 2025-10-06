@@ -1968,6 +1968,126 @@ async def delete_maintenance_record(
     
     return {"message": "Maintenance record deleted successfully"}
 
+# Document management for maintenance records
+@api_router.post("/maintenance/{record_id}/documents")
+async def upload_maintenance_document(
+    record_id: str,
+    file: UploadFile = File(...),
+    label: Optional[str] = Form(None),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload un document pour un enregistrement de maintenance"""
+    # Vérifier que l'enregistrement existe
+    record = await db.maintenance_records.find_one({"id": record_id})
+    if not record:
+        raise HTTPException(status_code=404, detail="Maintenance record not found")
+    
+    # Vérifier le type de fichier
+    allowed_types = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400, 
+            detail="Type de fichier non autorisé. Seuls PDF, JPG et PNG sont acceptés."
+        )
+    
+    # Vérifier la taille (max 10MB)
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size too large (max 10MB)")
+    
+    # Créer le document
+    document = Document(
+        name=file.filename,
+        filename=file.filename,
+        content_type=file.content_type,
+        size=len(content),
+        label=label or file.filename,
+        created_by=current_user.id
+    )
+    
+    # Sauvegarder le fichier
+    os.makedirs("/app/documents", exist_ok=True)
+    file_path = f"/app/documents/{document.id}"
+    with open(file_path, "wb") as f:
+        f.write(content)
+    
+    # Sauvegarder le document en base
+    document_dict = prepare_for_mongo(document.dict())
+    await db.documents.insert_one(document_dict)
+    
+    # Ajouter le document à l'enregistrement de maintenance
+    await db.maintenance_records.update_one(
+        {"id": record_id},
+        {"$push": {"documents": document.id}}
+    )
+    
+    return {"message": "Document uploaded successfully", "document_id": document.id}
+
+@api_router.get("/maintenance/{record_id}/documents")
+async def get_maintenance_documents(
+    record_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Récupérer les documents d'un enregistrement de maintenance"""
+    record = await db.maintenance_records.find_one({"id": record_id})
+    if not record:
+        raise HTTPException(status_code=404, detail="Maintenance record not found")
+    
+    doc_ids = record.get('documents', [])
+    if not doc_ids:
+        return []
+    
+    documents = await db.documents.find({"id": {"$in": doc_ids}}).to_list(length=None)
+    return [Document(**parse_from_mongo(doc)) for doc in documents]
+
+@api_router.get("/documents/{document_id}/download")
+async def download_maintenance_document(
+    document_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Télécharger un document de maintenance"""
+    document = await db.documents.find_one({"id": document_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    file_path = f"/app/documents/{document_id}"
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    
+    return FileResponse(
+        path=file_path,
+        filename=document['filename'],
+        media_type=document['content_type']
+    )
+
+@api_router.delete("/documents/{document_id}")
+async def delete_maintenance_document(
+    document_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Supprimer un document de maintenance"""
+    document = await db.documents.find_one({"id": document_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Supprimer le fichier physique
+    file_path = f"/app/documents/{document_id}"
+    try:
+        os.remove(file_path)
+    except OSError:
+        pass
+    
+    # Supprimer de la base de données
+    await db.documents.delete_one({"id": document_id})
+    
+    # Retirer de tous les enregistrements de maintenance
+    await db.maintenance_records.update_many(
+        {"documents": document_id},
+        {"$pull": {"documents": document_id}}
+    )
+    
+    return {"message": "Document deleted successfully"}
+
 # Include router
 app.include_router(api_router)
 

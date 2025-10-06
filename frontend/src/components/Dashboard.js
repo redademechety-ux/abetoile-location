@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { AlertTriangle, Users, Car, FileText, Receipt } from 'lucide-react';
+import { AlertTriangle, Users, Car, FileText, Receipt, DollarSign, TrendingUp, Truck, ShoppingCart } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;

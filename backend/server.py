@@ -163,8 +163,8 @@ class OrderItem(BaseModel):
     is_renewable: bool = False
     rental_period: Optional[RentalPeriod] = None
     rental_duration: Optional[int] = None
-    start_date: datetime
-    end_date: datetime
+    start_date: Optional[datetime] = None  # Made optional for backward compatibility
+    end_date: Optional[datetime] = None    # Made optional for backward compatibility
     item_total_ht: float = 0  # Total HT pour cet item
 
 class Order(BaseModel):

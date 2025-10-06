@@ -52,6 +52,7 @@ class InvoiceStatus(str, Enum):
     DRAFT = "draft"
     SENT = "sent"
     PAID = "paid"
+    PARTIALLY_PAID = "partially_paid"
     OVERDUE = "overdue"
     CANCELLED = "cancelled"
 

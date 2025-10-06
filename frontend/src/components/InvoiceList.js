@@ -136,6 +136,24 @@ const InvoiceList = () => {
     }
   };
 
+  const handleManagePayments = (invoice) => {
+    setSelectedInvoice(invoice);
+    setShowPayments(true);
+  };
+
+  const handlePaymentUpdate = async () => {
+    // Recharger les données après mise à jour des paiements
+    await fetchData();
+    
+    // Mettre à jour l'invoice sélectionnée
+    if (selectedInvoice) {
+      const updatedInvoice = invoices.find(inv => inv.id === selectedInvoice.id);
+      if (updatedInvoice) {
+        setSelectedInvoice(updatedInvoice);
+      }
+    }
+  };
+
   const filteredInvoices = invoices.filter(invoice => {
     const clientName = getClientName(invoice.client_id).toLowerCase();
     const invoiceNumber = invoice.invoice_number.toLowerCase();

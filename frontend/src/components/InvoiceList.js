@@ -322,6 +322,13 @@ const InvoiceList = () => {
                       </td>
                       <td>
                         <div className="flex gap-2">
+                          <button
+                            onClick={() => handleManagePayments(invoice)}
+                            className="btn btn-sm btn-info"
+                            title="Gérer les paiements"
+                          >
+                            <CreditCard size={16} />
+                          </button>
                           {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                             <button
                               onClick={() => markAsPaid(invoice.id)}

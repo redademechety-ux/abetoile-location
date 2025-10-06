@@ -282,7 +282,7 @@ const OrderForm = () => {
               <div className="space-y-4">
                 {formData.items.map((item, index) => (
                   <div key={index} className="border border-gray-200 rounded-lg p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div className="form-group">
                         <label className="form-label">Véhicule *</label>
                         <select
@@ -320,11 +320,57 @@ const OrderForm = () => {
                           value={item.daily_rate}
                           onChange={(e) => updateItem(index, 'daily_rate', parseFloat(e.target.value) || 0)}
                           className="form-input"
+                          placeholder="Prix automatique"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Prix rempli automatiquement, modifiable
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                      <div className="form-group">
+                        <label className="form-label">Date de début *</label>
+                        <input
+                          type="date"
+                          value={item.start_date}
+                          onChange={(e) => updateItem(index, 'start_date', e.target.value)}
+                          className="form-input"
+                          required
                         />
                       </div>
 
                       <div className="form-group">
-                        <label className="form-label">Actions</label>
+                        <label className="form-label">Date de fin *</label>
+                        <input
+                          type="date"
+                          value={item.end_date}
+                          onChange={(e) => updateItem(index, 'end_date', e.target.value)}
+                          className="form-input"
+                          required
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Nombre de jours</label>
+                        <div className="form-input bg-gray-50 flex items-center justify-center font-bold text-lg">
+                          {calculateDays(item.start_date, item.end_date)} jour{calculateDays(item.start_date, item.end_date) > 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      <div className="bg-blue-50 p-3 rounded">
+                        <div className="text-sm text-blue-600 font-medium">Total cet article (HT)</div>
+                        <div className="text-xl font-bold text-blue-800">
+                          {calculateItemTotal(item).toFixed(2)} €
+                        </div>
+                        <div className="text-xs text-blue-600">
+                          {item.daily_rate.toFixed(2)}€ × {item.quantity} × {calculateDays(item.start_date, item.end_date)} jour{calculateDays(item.start_date, item.end_date) > 1 ? 's' : ''}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end">
                         <button
                           type="button"
                           onClick={() => removeItem(index)}

@@ -233,14 +233,19 @@ const OrderForm = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Date de début *</label>
+                <label className="form-label">Montant de caution (€)</label>
                 <input
-                  type="datetime-local"
-                  value={formData.start_date}
-                  onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.deposit_amount}
+                  onChange={(e) => setFormData(prev => ({ ...prev, deposit_amount: parseFloat(e.target.value) || 0 }))}
                   className="form-input"
-                  required
+                  placeholder="0.00"
                 />
+                <p className="text-sm text-gray-500 mt-1">
+                  Montant de la caution (optionnel)
+                </p>
               </div>
             </div>
           </div>

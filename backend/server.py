@@ -525,6 +525,121 @@ async def get_orders(current_user: User = Depends(get_current_user)):
     orders = await db.orders.find().to_list(1000)
     return [Order(**parse_from_mongo(order)) for order in orders]
 
+@api_router.put("/orders/{order_id}", response_model=Order)
+async def update_order(order_id: str, order_data: OrderCreate, current_user: User = Depends(get_current_user)):
+    existing_order = await db.orders.find_one({"id": order_id})
+    if not existing_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Get client to calculate VAT
+    client = await db.clients.find_one({"id": order_data.client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Process each item and calculate totals
+    processed_items = []
+    total_ht = 0
+    
+    for item in order_data.items:
+        # Calculate number of days for this item
+        days = calculate_days_between(item.start_date, item.end_date)
+        
+        # Calculate item total
+        item_total_ht = item.daily_rate * item.quantity * days
+        
+        # Create processed item
+        processed_item = OrderItem(
+            vehicle_id=item.vehicle_id,
+            quantity=item.quantity,
+            daily_rate=item.daily_rate,
+            total_days=days,
+            is_renewable=item.is_renewable,
+            rental_period=item.rental_period,
+            rental_duration=item.rental_duration,
+            start_date=item.start_date,
+            end_date=item.end_date,
+            item_total_ht=item_total_ht
+        )
+        
+        processed_items.append(processed_item)
+        total_ht += item_total_ht
+    
+    # Calculate VAT and totals
+    vat_rate = client['vat_rate'] / 100
+    total_vat = total_ht * vat_rate
+    total_ttc = total_ht + total_vat
+    
+    # Calculate deposit VAT and grand total
+    deposit_vat = order_data.deposit_amount * vat_rate if order_data.deposit_amount > 0 else 0
+    grand_total = total_ttc + order_data.deposit_amount + deposit_vat
+    
+    updated_order = Order(
+        id=order_id,
+        client_id=order_data.client_id,
+        order_number=existing_order['order_number'],
+        items=processed_items,
+        deposit_amount=order_data.deposit_amount,
+        total_ht=total_ht,
+        total_vat=total_vat,
+        total_ttc=total_ttc,
+        deposit_vat=deposit_vat,
+        grand_total=grand_total,
+        status=existing_order['status'],
+        created_at=datetime.fromisoformat(existing_order['created_at']),
+        created_by=existing_order['created_by']
+    )
+    
+    order_dict = prepare_for_mongo(updated_order.dict())
+    await db.orders.replace_one({"id": order_id}, order_dict)
+    
+    return updated_order
+
+class OrderRenewalUpdate(BaseModel):
+    is_renewable: bool
+    rental_period: Optional[str] = None
+    rental_duration: Optional[int] = None
+
+@api_router.patch("/orders/{order_id}/renewal", response_model=dict)
+async def update_order_renewal_settings(
+    order_id: str, 
+    renewal_data: OrderRenewalUpdate, 
+    current_user: User = Depends(get_current_user)
+):
+    """Modifier les paramètres de reconductibilité d'une commande"""
+    existing_order = await db.orders.find_one({"id": order_id})
+    if not existing_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Mettre à jour tous les items de la commande
+    update_fields = {}
+    
+    # Mise à jour de chaque item
+    items = existing_order.get('items', [])
+    for i, item in enumerate(items):
+        update_fields[f"items.{i}.is_renewable"] = renewal_data.is_renewable
+        if renewal_data.is_renewable:
+            if renewal_data.rental_period:
+                update_fields[f"items.{i}.rental_period"] = renewal_data.rental_period
+            if renewal_data.rental_duration:
+                update_fields[f"items.{i}.rental_duration"] = renewal_data.rental_duration
+        else:
+            # Si on désactive la reconductibilité, on retire les paramètres
+            update_fields[f"items.{i}.rental_period"] = None
+            update_fields[f"items.{i}.rental_duration"] = None
+    
+    # Exécuter la mise à jour
+    await db.orders.update_one(
+        {"id": order_id}, 
+        {"$set": update_fields}
+    )
+    
+    status_message = "activée" if renewal_data.is_renewable else "désactivée"
+    return {
+        "message": f"Reconductibilité {status_message} avec succès",
+        "order_id": order_id,
+        "is_renewable": renewal_data.is_renewable
+    }
+
 # Invoice endpoints
 @api_router.get("/invoices", response_model=List[Invoice])
 async def get_invoices(current_user: User = Depends(get_current_user)):

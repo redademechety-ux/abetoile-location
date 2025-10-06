@@ -422,14 +422,13 @@ const OrderForm = () => {
                             />
                           </div>
 
-                          <div className="form-group">
-                            <label className="form-label">Date de fin (optionnel)</label>
-                            <input
-                              type="date"
-                              value={item.end_date}
-                              onChange={(e) => updateItem(index, 'end_date', e.target.value)}
-                              className="form-input"
-                            />
+                          <div className="bg-yellow-50 p-3 rounded">
+                            <div className="text-sm text-yellow-600 font-medium">Reconduction automatique</div>
+                            <div className="text-xs text-yellow-700 mt-1">
+                              Prochaine période : {item.rental_duration} {item.rental_period === 'days' ? 'jour(s)' : 
+                                item.rental_period === 'weeks' ? 'semaine(s)' : 
+                                item.rental_period === 'months' ? 'mois' : 'année(s)'}
+                            </div>
                           </div>
                         </div>
                       )}

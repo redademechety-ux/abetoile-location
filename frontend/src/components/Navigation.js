@@ -19,6 +19,7 @@ const Navigation = ({ onLogout }) => {
     { path: '/orders', label: 'Commandes', icon: FileText },
     { path: '/invoices', label: 'Factures', icon: Receipt },
     { path: '/accounting', label: 'Comptabilité', icon: Calculator },
+    { path: '/maintenance', label: 'Maintenance', icon: Wrench },
     { path: '/settings', label: 'Paramètres', icon: Settings }
   ];
 

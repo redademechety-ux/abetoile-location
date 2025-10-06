@@ -583,6 +583,154 @@ async def mark_invoice_paid(invoice_id: str, current_user: User = Depends(get_cu
     
     return {"message": "Invoice marked as paid and accounting entries generated"}
 
+class PaymentCreate(BaseModel):
+    amount: float
+    payment_date: datetime
+    payment_method: str
+    reference: Optional[str] = None
+    notes: Optional[str] = None
+
+@api_router.post("/invoices/{invoice_id}/payments", response_model=Payment)
+async def add_payment(
+    invoice_id: str,
+    payment_data: PaymentCreate,
+    current_user: User = Depends(get_current_user)
+):
+    # Get invoice
+    invoice = await db.invoices.find_one({"id": invoice_id})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Validate payment amount
+    current_paid = invoice.get('amount_paid', 0)
+    total_amount = invoice.get('grand_total', invoice.get('total_ttc', 0))
+    
+    if payment_data.amount <= 0:
+        raise HTTPException(status_code=400, detail="Payment amount must be positive")
+    
+    if current_paid + payment_data.amount > total_amount:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Payment amount exceeds remaining balance. Remaining: {total_amount - current_paid:.2f}€"
+        )
+    
+    # Create payment record
+    payment = Payment(
+        invoice_id=invoice_id,
+        amount=payment_data.amount,
+        payment_date=payment_data.payment_date,
+        payment_method=payment_data.payment_method,
+        reference=payment_data.reference,
+        notes=payment_data.notes,
+        created_by=current_user.id
+    )
+    
+    payment_dict = prepare_for_mongo(payment.dict())
+    await db.payments.insert_one(payment_dict)
+    
+    # Update invoice
+    new_amount_paid = current_paid + payment_data.amount
+    new_remaining = total_amount - new_amount_paid
+    
+    update_data = {
+        "amount_paid": new_amount_paid,
+        "remaining_amount": new_remaining,
+        "payment_date": payment_data.payment_date.isoformat()
+    }
+    
+    # Update status based on remaining amount
+    if new_remaining <= 0:
+        update_data["status"] = "paid"
+    elif new_amount_paid > 0:
+        update_data["status"] = "partially_paid"
+    
+    await db.invoices.update_one(
+        {"id": invoice_id},
+        {"$set": update_data}
+    )
+    
+    return payment
+
+@api_router.get("/invoices/{invoice_id}/payments", response_model=List[Payment])
+async def get_invoice_payments(
+    invoice_id: str, 
+    current_user: User = Depends(get_current_user)
+):
+    payments = await db.payments.find({"invoice_id": invoice_id}).to_list(length=None)
+    return [Payment(**payment) for payment in payments]
+
+@api_router.delete("/payments/{payment_id}")
+async def delete_payment(
+    payment_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    # Get payment
+    payment = await db.payments.find_one({"id": payment_id})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    
+    # Get invoice
+    invoice = await db.invoices.find_one({"id": payment["invoice_id"]})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Update invoice amounts
+    current_paid = invoice.get('amount_paid', 0)
+    total_amount = invoice.get('grand_total', invoice.get('total_ttc', 0))
+    
+    new_amount_paid = max(0, current_paid - payment["amount"])
+    new_remaining = total_amount - new_amount_paid
+    
+    update_data = {
+        "amount_paid": new_amount_paid,
+        "remaining_amount": new_remaining
+    }
+    
+    # Update status
+    if new_remaining >= total_amount:
+        update_data["status"] = "draft"
+        update_data["payment_date"] = None
+    elif new_amount_paid > 0:
+        update_data["status"] = "partially_paid"
+    else:
+        update_data["status"] = "sent"
+    
+    # Delete payment and update invoice
+    await db.payments.delete_one({"id": payment_id})
+    await db.invoices.update_one(
+        {"id": payment["invoice_id"]},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Payment deleted successfully"}
+
+@api_router.put("/invoices/{invoice_id}/payment")
+async def mark_invoice_paid(
+    invoice_id: str,
+    payment_date: datetime,
+    current_user: User = Depends(get_current_user)
+):
+    """Legacy endpoint - marks invoice as fully paid with single payment"""
+    invoice = await db.invoices.find_one({"id": invoice_id})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    total_amount = invoice.get('grand_total', invoice.get('total_ttc', 0))
+    current_paid = invoice.get('amount_paid', 0)
+    remaining = total_amount - current_paid
+    
+    if remaining > 0:
+        # Create payment for remaining amount
+        payment_data = PaymentCreate(
+            amount=remaining,
+            payment_date=payment_date,
+            payment_method="bank",
+            notes="Full payment (legacy endpoint)"
+        )
+        await add_payment(invoice_id, payment_data, current_user)
+    
+    return {"message": "Invoice marked as paid"}
+
 # PDF Generation endpoints
 @api_router.post("/invoices/{invoice_id}/generate-pdf")
 async def generate_invoice_pdf(invoice_id: str, current_user: User = Depends(get_current_user)):

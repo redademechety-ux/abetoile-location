@@ -48,6 +48,48 @@ const OrderList = () => {
     return vehicle ? `${vehicle.brand} ${vehicle.model}` : 'Véhicule inconnu';
   };
 
+  const handleToggleRenewal = async (order) => {
+    setRenewalLoading(prev => ({ ...prev, [order.id]: true }));
+    setError('');
+    setSuccess('');
+
+    try {
+      const hasRenewableItems = order.items?.some(item => item.is_renewable);
+      const newRenewableStatus = !hasRenewableItems;
+
+      const response = await axios.put(`${API}/orders/${order.id}/renewal`, {
+        is_renewable: newRenewableStatus
+      });
+
+      if (response.data.success) {
+        // Mettre à jour l'état local
+        setOrders(prevOrders => 
+          prevOrders.map(o => 
+            o.id === order.id 
+              ? { 
+                  ...o, 
+                  items: o.items.map(item => ({ 
+                    ...item, 
+                    is_renewable: newRenewableStatus 
+                  }))
+                }
+              : o
+          )
+        );
+        
+        setSuccess(newRenewableStatus 
+          ? 'Reconductibilité activée avec succès' 
+          : 'Reconductibilité désactivée avec succès'
+        );
+      }
+    } catch (error) {
+      console.error('Erreur lors de la modification de la reconductibilité:', error);
+      setError('Erreur lors de la modification de la reconductibilité');
+    } finally {
+      setRenewalLoading(prev => ({ ...prev, [order.id]: false }));
+    }
+  };
+
   const filteredOrders = orders.filter(order => {
     const clientName = getClientName(order.client_id).toLowerCase();
     const orderNumber = order.order_number.toLowerCase();

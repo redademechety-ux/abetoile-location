@@ -435,21 +435,33 @@ const MaintenanceForm = () => {
               {/* Upload */}
               <div className="mb-6">
                 <label className="form-label">Ajouter un document</label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileUpload}
-                    className="form-input"
-                    disabled={uploadingFile}
-                  />
-                  {uploadingFile && (
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                  )}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={handleFileUpload}
+                      className="form-input"
+                      disabled={uploadingFile}
+                    />
+                    {uploadingFile && (
+                      <div className="flex items-center gap-2 text-blue-600">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                        <span className="text-sm">Téléchargement...</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                    <p className="text-sm text-blue-800 font-medium mb-1">
+                      📄 Instructions d'upload
+                    </p>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      <li>• Formats acceptés: PDF, JPG, PNG</li>
+                      <li>• Taille maximum: 10 MB par fichier</li>
+                      <li>• Le document sera lié à cet enregistrement de maintenance</li>
+                    </ul>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  Formats acceptés: PDF, JPG, PNG - Taille max: 10MB
-                </p>
               </div>
 
               {/* Liste des documents */}

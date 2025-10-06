@@ -12,6 +12,9 @@ const OrderList = () => {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [renewalLoading, setRenewalLoading] = useState({});
 
   useEffect(() => {
     fetchData();

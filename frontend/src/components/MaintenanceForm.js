@@ -133,11 +133,14 @@ const MaintenanceForm = () => {
     }
   };
 
-  const handleFileUpload = async (e) => {
+  const handleFileSelect = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
 
-    console.log('📄 Démarrage upload fichier:', file.name, 'Type:', file.type, 'Taille:', file.size);
+    console.log('📄 Fichier sélectionné:', file.name, 'Type:', file.type, 'Taille:', file.size);
 
     // Vérifier le type de fichier
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
@@ -145,6 +148,8 @@ const MaintenanceForm = () => {
       const errorMsg = `Type de fichier non autorisé: ${file.type}. Seuls PDF, JPG et PNG sont acceptés.`;
       console.error('❌', errorMsg);
       setError(errorMsg);
+      setSelectedFile(null);
+      e.target.value = '';
       return;
     }
 
@@ -153,6 +158,8 @@ const MaintenanceForm = () => {
       const errorMsg = `Fichier trop volumineux: ${(file.size / 1024 / 1024).toFixed(2)}MB (max 10MB)`;
       console.error('❌', errorMsg);
       setError(errorMsg);
+      setSelectedFile(null);
+      e.target.value = '';
       return;
     }
 
@@ -160,18 +167,28 @@ const MaintenanceForm = () => {
       const errorMsg = 'Veuillez d\'abord sauvegarder l\'enregistrement avant d\'ajouter des documents.';
       console.error('❌', errorMsg);
       setError(errorMsg);
+      setSelectedFile(null);
+      e.target.value = '';
       return;
     }
+
+    // Fichier valide, le stocker pour l'upload
+    setSelectedFile(file);
+    setError(''); // Clear any previous errors
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) return;
 
     setUploadingFile(true);
     setError('');
     setSuccess('');
 
     try {
-      console.log('🚀 Préparation FormData...');
+      console.log('🚀 Démarrage upload fichier:', selectedFile.name);
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('label', file.name);
+      formData.append('file', selectedFile);
+      formData.append('label', selectedFile.name);
 
       console.log('📡 Envoi vers:', `${API}/maintenance/${id}/documents`);
       
@@ -179,9 +196,12 @@ const MaintenanceForm = () => {
       const response = await axios.post(`${API}/maintenance/${id}/documents`, formData);
 
       console.log('✅ Réponse reçue:', response.status, response.data);
-      setSuccess(`Document "${file.name}" téléchargé avec succès`);
+      setSuccess(`Document "${selectedFile.name}" téléchargé avec succès`);
       fetchDocuments(); // Recharger la liste des documents
-      e.target.value = ''; // Reset le champ file
+      
+      // Reset le formulaire
+      setSelectedFile(null);
+      document.querySelector('input[type="file"]').value = '';
     } catch (error) {
       console.error('❌ Erreur lors du téléchargement:', error);
       

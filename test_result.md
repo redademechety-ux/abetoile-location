@@ -402,9 +402,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Order renewability management functionality - COMPLETED"
-    - "Order update functionality - COMPLETED"
-    - "All new integration features tested and working"
+    - "Enhanced Dashboard with Revenue - COMPLETED"
+    - "Vehicle Type VAN - COMPLETED"
+    - "Maintenance Records System - COMPLETED"
+    - "Document Management for Maintenance - COMPLETED"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"

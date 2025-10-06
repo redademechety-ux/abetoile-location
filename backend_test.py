@@ -1725,6 +1725,501 @@ class AutoProAPITester:
         
         return success1 and success2
 
+    # NEW MAJOR FEATURES TESTS - As requested in review
+    
+    def test_enhanced_dashboard_with_revenue(self):
+        """Test enhanced dashboard with monthly and yearly revenue calculations"""
+        success, response = self.run_test(
+            "Enhanced Dashboard - Revenue Stats",
+            "GET",
+            "dashboard",
+            200
+        )
+        
+        if success:
+            stats = response.get('stats', {})
+            print(f"   Dashboard stats structure: {list(stats.keys())}")
+            
+            # Verify new revenue fields are present
+            required_fields = ['monthly_revenue', 'yearly_revenue', 'clients', 'vehicles', 'orders', 'invoices']
+            missing_fields = [field for field in required_fields if field not in stats]
+            
+            if not missing_fields:
+                print("   ✅ All required dashboard fields present")
+                print(f"   Monthly revenue: {stats.get('monthly_revenue', 0):.2f}€")
+                print(f"   Yearly revenue: {stats.get('yearly_revenue', 0):.2f}€")
+                print(f"   Clients: {stats.get('clients', 0)}")
+                print(f"   Vehicles: {stats.get('vehicles', 0)}")
+                print(f"   Orders: {stats.get('orders', 0)}")
+                print(f"   Invoices: {stats.get('invoices', 0)}")
+                print(f"   Overdue invoices: {stats.get('overdue_invoices', 0)}")
+            else:
+                print(f"   ❌ Missing dashboard fields: {missing_fields}")
+                return False
+            
+            # Verify recent_orders and overdue_invoices arrays
+            recent_orders = response.get('recent_orders', [])
+            overdue_invoices = response.get('overdue_invoices', [])
+            
+            print(f"   Recent orders count: {len(recent_orders)}")
+            print(f"   Overdue invoices count: {len(overdue_invoices)}")
+            
+            return True
+        
+        return success
+
+    def test_vehicle_type_van_creation(self):
+        """Test vehicle creation with VAN type"""
+        vehicle_data = {
+            "type": "van",  # NEW VAN type
+            "brand": "Mercedes",
+            "model": "Sprinter",
+            "license_plate": "VAN-123-CD",
+            "first_registration": "2021-03-15T00:00:00Z",
+            "technical_control_expiry": "2025-03-15T00:00:00Z",
+            "insurance_company": "Allianz Insurance",
+            "insurance_contract": "VAN456789",
+            "insurance_amount": 8000.0,
+            "insurance_expiry": "2025-12-31T00:00:00Z",
+            "daily_rate": 85.0,
+            "accounting_account": "706000"
+        }
+        
+        success, response = self.run_test(
+            "Vehicle Type VAN - Create",
+            "POST",
+            "vehicles",
+            200,
+            data=vehicle_data
+        )
+        
+        if success:
+            print(f"   VAN Vehicle ID: {response.get('id')}")
+            print(f"   Vehicle type: {response.get('type')}")
+            print(f"   Brand/Model: {response.get('brand')} {response.get('model')}")
+            print(f"   Daily rate: {response.get('daily_rate', 0):.2f}€")
+            
+            # Store VAN vehicle ID for update test
+            self.test_data['van_vehicle_id'] = response.get('id')
+            
+            # Verify VAN type is correctly stored
+            if response.get('type') == 'van':
+                print("   ✅ VAN type correctly stored")
+                return True
+            else:
+                print(f"   ❌ Expected 'van', got '{response.get('type')}'")
+                return False
+        
+        return success
+
+    def test_vehicle_type_van_update(self):
+        """Test updating existing vehicle to VAN type"""
+        if 'vehicle_id' not in self.test_data:
+            print("❌ Skipping - No vehicle ID available for VAN update test")
+            return False
+            
+        vehicle_update_data = {
+            "type": "van",  # Update to VAN type
+            "brand": "Ford",
+            "model": "Transit",
+            "license_plate": "UPDATED-VAN-456",
+            "first_registration": "2020-06-15T00:00:00Z",
+            "technical_control_expiry": "2025-06-15T00:00:00Z",
+            "insurance_company": "Generali Insurance",
+            "insurance_contract": "TRANSIT789",
+            "insurance_amount": 7500.0,
+            "insurance_expiry": "2025-12-31T00:00:00Z",
+            "daily_rate": 75.0,
+            "accounting_account": "706000"
+        }
+        
+        success, response = self.run_test(
+            "Vehicle Type VAN - Update Existing",
+            "PUT",
+            f"vehicles/{self.test_data['vehicle_id']}",
+            200,
+            data=vehicle_update_data
+        )
+        
+        if success:
+            print(f"   Updated Vehicle ID: {response.get('id')}")
+            print(f"   Updated type: {response.get('type')}")
+            print(f"   Updated brand/model: {response.get('brand')} {response.get('model')}")
+            
+            # Verify VAN type is correctly updated
+            if response.get('type') == 'van':
+                print("   ✅ Vehicle successfully updated to VAN type")
+                return True
+            else:
+                print(f"   ❌ Expected 'van', got '{response.get('type')}'")
+                return False
+        
+        return success
+
+    def test_maintenance_records_crud_create(self):
+        """Test maintenance record creation with financial calculations"""
+        if 'vehicle_id' not in self.test_data:
+            print("❌ Skipping - No vehicle ID available for maintenance test")
+            return False
+            
+        maintenance_data = {
+            "vehicle_id": self.test_data['vehicle_id'],
+            "maintenance_type": "repair",
+            "description": "Réparation moteur - Remplacement courroie distribution",
+            "maintenance_date": datetime.now(timezone.utc).isoformat(),
+            "amount_ht": 450.00,
+            "vat_rate": 20.0,
+            "supplier": "Garage Dupont SARL",
+            "notes": "Intervention d'urgence - garantie 6 mois"
+        }
+        
+        success, response = self.run_test(
+            "Maintenance CRUD - Create Record",
+            "POST",
+            "maintenance",
+            200,
+            data=maintenance_data
+        )
+        
+        if success:
+            # Verify financial calculations
+            expected_vat_amount = 450.00 * 0.20  # 90.00€
+            expected_amount_ttc = 450.00 + expected_vat_amount  # 540.00€
+            
+            print(f"   Maintenance Record ID: {response.get('id')}")
+            print(f"   Vehicle ID: {response.get('vehicle_id')}")
+            print(f"   Type: {response.get('maintenance_type')}")
+            print(f"   Description: {response.get('description')}")
+            print(f"   Amount HT: {response.get('amount_ht', 0):.2f}€")
+            print(f"   VAT Rate: {response.get('vat_rate', 0):.1f}%")
+            print(f"   VAT Amount: {response.get('vat_amount', 0):.2f}€ (expected: {expected_vat_amount:.2f}€)")
+            print(f"   Amount TTC: {response.get('amount_ttc', 0):.2f}€ (expected: {expected_amount_ttc:.2f}€)")
+            print(f"   Supplier: {response.get('supplier')}")
+            
+            # Store maintenance record ID for other tests
+            self.test_data['maintenance_record_id'] = response.get('id')
+            
+            # Verify calculations are correct
+            vat_correct = abs(response.get('vat_amount', 0) - expected_vat_amount) < 0.01
+            ttc_correct = abs(response.get('amount_ttc', 0) - expected_amount_ttc) < 0.01
+            
+            if vat_correct and ttc_correct:
+                print("   ✅ Financial calculations are correct!")
+                return True
+            else:
+                print("   ❌ Financial calculation errors detected!")
+                return False
+        
+        return success
+
+    def test_maintenance_records_crud_read_all(self):
+        """Test getting all maintenance records"""
+        success, response = self.run_test(
+            "Maintenance CRUD - Get All Records",
+            "GET",
+            "maintenance",
+            200
+        )
+        
+        if success:
+            print(f"   Found {len(response)} maintenance records")
+            
+            # Look for our created record
+            our_record = None
+            if 'maintenance_record_id' in self.test_data:
+                for record in response:
+                    if record.get('id') == self.test_data['maintenance_record_id']:
+                        our_record = record
+                        break
+            
+            if our_record:
+                print(f"   ✅ Found our maintenance record: {our_record.get('description')}")
+                print(f"   Record amount: {our_record.get('amount_ttc', 0):.2f}€")
+            else:
+                print("   ⚠️  Our maintenance record not found in list")
+            
+            return True
+        
+        return success
+
+    def test_maintenance_records_crud_read_specific(self):
+        """Test getting specific maintenance record"""
+        if 'maintenance_record_id' not in self.test_data:
+            print("❌ Skipping - No maintenance record ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Maintenance CRUD - Get Specific Record",
+            "GET",
+            f"maintenance/{self.test_data['maintenance_record_id']}",
+            200
+        )
+        
+        if success:
+            print(f"   Record ID: {response.get('id')}")
+            print(f"   Description: {response.get('description')}")
+            print(f"   Amount TTC: {response.get('amount_ttc', 0):.2f}€")
+            print(f"   Supplier: {response.get('supplier')}")
+            print(f"   Documents count: {len(response.get('documents', []))}")
+            
+            return True
+        
+        return success
+
+    def test_maintenance_records_crud_update(self):
+        """Test updating maintenance record"""
+        if 'maintenance_record_id' not in self.test_data or 'vehicle_id' not in self.test_data:
+            print("❌ Skipping - No maintenance record or vehicle ID available")
+            return False
+            
+        updated_maintenance_data = {
+            "vehicle_id": self.test_data['vehicle_id'],
+            "maintenance_type": "maintenance",  # Changed type
+            "description": "Entretien complet - Vidange et révision générale",  # Updated description
+            "maintenance_date": datetime.now(timezone.utc).isoformat(),
+            "amount_ht": 320.00,  # Changed amount
+            "vat_rate": 20.0,
+            "supplier": "Garage Martin & Fils",  # Changed supplier
+            "notes": "Entretien préventif - prochaine révision dans 6 mois"
+        }
+        
+        success, response = self.run_test(
+            "Maintenance CRUD - Update Record",
+            "PUT",
+            f"maintenance/{self.test_data['maintenance_record_id']}",
+            200,
+            data=updated_maintenance_data
+        )
+        
+        if success:
+            # Verify updated financial calculations
+            expected_vat_amount = 320.00 * 0.20  # 64.00€
+            expected_amount_ttc = 320.00 + expected_vat_amount  # 384.00€
+            
+            print(f"   Updated Record ID: {response.get('id')}")
+            print(f"   Updated Type: {response.get('maintenance_type')}")
+            print(f"   Updated Description: {response.get('description')}")
+            print(f"   Updated Amount HT: {response.get('amount_ht', 0):.2f}€")
+            print(f"   Updated VAT Amount: {response.get('vat_amount', 0):.2f}€ (expected: {expected_vat_amount:.2f}€)")
+            print(f"   Updated Amount TTC: {response.get('amount_ttc', 0):.2f}€ (expected: {expected_amount_ttc:.2f}€)")
+            print(f"   Updated Supplier: {response.get('supplier')}")
+            
+            # Verify calculations are correct
+            vat_correct = abs(response.get('vat_amount', 0) - expected_vat_amount) < 0.01
+            ttc_correct = abs(response.get('amount_ttc', 0) - expected_amount_ttc) < 0.01
+            
+            if vat_correct and ttc_correct:
+                print("   ✅ Updated financial calculations are correct!")
+                return True
+            else:
+                print("   ❌ Updated financial calculation errors detected!")
+                return False
+        
+        return success
+
+    def test_maintenance_document_upload(self):
+        """Test document upload for maintenance records (PDF/JPG)"""
+        if 'maintenance_record_id' not in self.test_data:
+            print("❌ Skipping - No maintenance record ID available")
+            return False
+            
+        # Create a test PDF content
+        test_pdf_content = b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n>>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000074 00000 n \n0000000120 00000 n \ntrailer\n<<\n/Size 4\n/Root 1 0 R\n>>\nstartxref\n179\n%%EOF"
+        
+        url = f"{self.base_url}/maintenance/{self.test_data['maintenance_record_id']}/documents"
+        headers = {}
+        if self.token:
+            headers['Authorization'] = f'Bearer {self.token}'
+
+        files = {
+            'file': ('maintenance_invoice.pdf', test_pdf_content, 'application/pdf')
+        }
+        data = {
+            'label': 'Facture de réparation moteur'
+        }
+
+        self.tests_run += 1
+        print(f"\n🔍 Testing Maintenance Document Upload...")
+        print(f"   URL: {url}")
+        
+        try:
+            response = requests.post(url, files=files, data=data, headers=headers)
+            
+            success = response.status_code == 200
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                try:
+                    response_data = response.json()
+                    print(f"   Message: {response_data.get('message')}")
+                    print(f"   Document ID: {response_data.get('document_id')}")
+                    
+                    # Store document ID for other tests
+                    self.test_data['maintenance_document_id'] = response_data.get('document_id')
+                    return True
+                except:
+                    return True
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                try:
+                    error_detail = response.json()
+                    print(f"   Error: {error_detail}")
+                except:
+                    print(f"   Response: {response.text}")
+                return False
+
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
+
+    def test_maintenance_document_list(self):
+        """Test getting maintenance documents list"""
+        if 'maintenance_record_id' not in self.test_data:
+            print("❌ Skipping - No maintenance record ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Maintenance Documents - Get List",
+            "GET",
+            f"maintenance/{self.test_data['maintenance_record_id']}/documents",
+            200
+        )
+        
+        if success:
+            print(f"   Found {len(response)} documents for maintenance record")
+            
+            for i, doc in enumerate(response, 1):
+                print(f"   Document {i}: {doc.get('name')} ({doc.get('content_type')}) - {doc.get('size')} bytes")
+                print(f"   Label: {doc.get('label')}")
+            
+            return True
+        
+        return success
+
+    def test_maintenance_document_download(self):
+        """Test downloading maintenance document"""
+        if 'maintenance_document_id' not in self.test_data:
+            print("❌ Skipping - No maintenance document ID available")
+            return False
+            
+        url = f"{self.base_url}/documents/{self.test_data['maintenance_document_id']}/download"
+        headers = {}
+        if self.token:
+            headers['Authorization'] = f'Bearer {self.token}'
+
+        self.tests_run += 1
+        print(f"\n🔍 Testing Maintenance Document Download...")
+        print(f"   URL: {url}")
+        
+        try:
+            response = requests.get(url, headers=headers)
+            
+            success = response.status_code == 200
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                print(f"   Content-Type: {response.headers.get('Content-Type', 'Unknown')}")
+                print(f"   Content-Length: {len(response.content)} bytes")
+                
+                # Check if it's a PDF response
+                if response.headers.get('Content-Type') == 'application/pdf':
+                    print(f"   ✅ PDF document downloaded correctly")
+                else:
+                    print(f"   ⚠️  Expected PDF content-type, got: {response.headers.get('Content-Type')}")
+                    
+                return True
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                try:
+                    error_detail = response.json()
+                    print(f"   Error: {error_detail}")
+                except:
+                    print(f"   Response: {response.text}")
+                return False
+
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
+
+    def test_maintenance_document_delete(self):
+        """Test deleting maintenance document"""
+        if 'maintenance_document_id' not in self.test_data:
+            print("❌ Skipping - No maintenance document ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Maintenance Documents - Delete",
+            "DELETE",
+            f"documents/{self.test_data['maintenance_document_id']}",
+            200
+        )
+        
+        if success:
+            print(f"   Delete message: {response.get('message')}")
+            
+            # Verify document is removed from maintenance record
+            success2, maintenance_response = self.run_test(
+                "Verify Document Removed from Maintenance",
+                "GET",
+                f"maintenance/{self.test_data['maintenance_record_id']}/documents",
+                200
+            )
+            
+            if success2:
+                remaining_docs = len(maintenance_response)
+                print(f"   Remaining documents in maintenance record: {remaining_docs}")
+                
+                # Check if our document is no longer in the list
+                our_doc_found = False
+                for doc in maintenance_response:
+                    if doc.get('id') == self.test_data['maintenance_document_id']:
+                        our_doc_found = True
+                        break
+                
+                if not our_doc_found:
+                    print("   ✅ Document successfully removed from maintenance record")
+                else:
+                    print("   ❌ Document still found in maintenance record")
+                    return False
+            
+            return True
+        
+        return success
+
+    def test_maintenance_records_crud_delete(self):
+        """Test deleting maintenance record"""
+        if 'maintenance_record_id' not in self.test_data:
+            print("❌ Skipping - No maintenance record ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Maintenance CRUD - Delete Record",
+            "DELETE",
+            f"maintenance/{self.test_data['maintenance_record_id']}",
+            200
+        )
+        
+        if success:
+            print(f"   Delete message: {response.get('message')}")
+            
+            # Verify record is deleted by trying to get it
+            success2, error_response = self.run_test(
+                "Verify Maintenance Record Deleted",
+                "GET",
+                f"maintenance/{self.test_data['maintenance_record_id']}",
+                404  # Should return 404
+            )
+            
+            if success2:
+                print("   ✅ Maintenance record successfully deleted (404 returned)")
+            else:
+                print("   ❌ Maintenance record still exists after deletion")
+                return False
+            
+            return True
+        
+        return success
+
 def main():
     print("🚀 Starting AutoPro Rental API Tests")
     print("=" * 50)

@@ -98,20 +98,30 @@ const OrderForm = () => {
   };
 
   const updateItem = (index, field, value) => {
-    setFormData(prev => {
-      const newItems = [...prev.items];
-      newItems[index] = { ...newItems[index], [field]: value };
-      
-      // Auto-fill daily rate when vehicle is selected
-      if (field === 'vehicle_id') {
-        const vehicle = vehicles.find(v => v.id === value);
-        if (vehicle) {
-          newItems[index].daily_rate = vehicle.daily_rate;
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.map((item, i) => {
+        if (i === index) {
+          const updatedItem = { ...item, [field]: value };
+          
+          // Si on change de véhicule, remplir automatiquement le prix journalier
+          if (field === 'vehicle_id' && value) {
+            const selectedVehicle = vehicles.find(v => v.id === value);
+            if (selectedVehicle) {
+              updatedItem.daily_rate = selectedVehicle.daily_rate || 0;
+            }
+          }
+          
+          // Si on change la date de fin et qu'on a une période de renouvellement, ajuster la date
+          if (field === 'end_date' && updatedItem.rental_period && updatedItem.rental_duration) {
+            // Laisser l'utilisateur modifier manuellement
+          }
+          
+          return updatedItem;
         }
-      }
-      
-      return { ...prev, items: newItems };
-    });
+        return item;
+      })
+    }));
   };
 
   const handleSubmit = async (e) => {

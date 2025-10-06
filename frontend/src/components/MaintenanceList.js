@@ -82,7 +82,7 @@ const MaintenanceList = () => {
   const getMaintenanceTypeIcon = (type) => {
     switch (type) {
       case 'repair':
-        return <Tool size={16} className="text-red-600" />;
+        return <Settings size={16} className="text-red-600" />;
       case 'maintenance':
         return <Wrench size={16} className="text-blue-600" />;
       case 'inspection':

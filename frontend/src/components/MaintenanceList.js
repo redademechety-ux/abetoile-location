@@ -9,7 +9,7 @@ import {
   Trash2, 
   FileText, 
   Wrench, 
-  Tool, 
+  Settings, 
   Car,
   Calendar,
   DollarSign,

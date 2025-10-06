@@ -291,6 +291,54 @@ backend:
         -agent: "testing"
         -comment: "TESTED: Order update functionality (PUT /api/orders/{order_id}) is WORKING PERFECTLY. Successfully updated existing order with new items, dates, quantities, and rates. Dynamic day calculation works correctly (10 days calculated from date range). Deposit and total calculations are accurate (1100€ HT + 220€ VAT + 250€ deposit + 50€ deposit VAT = 1620€ total). Renewability settings are preserved during updates (is_renewable=true, rental_period='weeks', rental_duration=2). Error handling for non-existent orders returns proper 404 responses. All calculations verified and correct."
 
+  - task: "Enhanced Dashboard with Revenue"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: Enhanced Dashboard with Revenue (GET /api/dashboard) is WORKING PERFECTLY. Successfully returns enhanced stats structure with monthly_revenue and yearly_revenue calculations. All required fields present: clients, vehicles, orders, invoices, overdue_invoices, monthly_revenue (0.00€), yearly_revenue (108.00€). Recent orders array contains 5 recent orders with complete data. Overdue invoices array contains 3 overdue invoices. Dashboard enhancement is fully operational and provides comprehensive business metrics."
+
+  - task: "Vehicle Type VAN"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: Vehicle Type VAN is WORKING CORRECTLY. Successfully created new vehicle with type 'van' (Mercedes Sprinter, 85€/day). VAN type is correctly stored and retrieved. Vehicle creation with VAN type works perfectly. NOTE: Vehicle update endpoint (PUT /api/vehicles/{id}) is not implemented - only vehicle creation supports VAN type currently. VAN type functionality is operational for new vehicle creation."
+
+  - task: "Maintenance Records System"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: Maintenance Records System CRUD operations are WORKING PERFECTLY. CREATE: Successfully creates maintenance records with accurate financial calculations (450€ HT + 90€ VAT = 540€ TTC). READ: Gets all records and specific records correctly. UPDATE: Updates records with recalculated financials (320€ HT + 64€ VAT = 384€ TTC). DELETE: Properly deletes records and associated documents. All VAT calculations are accurate (amount_ht × vat_rate = vat_amount). Complete CRUD functionality is operational."
+
+  - task: "Document Management for Maintenance"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: Document Management for Maintenance is WORKING CORRECTLY. UPLOAD: Successfully uploads PDF/JPG documents to maintenance records. LIST: Retrieves document lists correctly. DELETE: Removes documents and updates maintenance records properly. DOWNLOAD: Fixed FileResponse import issue - now working correctly. Accepts PDF/JPG formats as specified. Document management updates maintenance records correctly. All CRUD operations work with proper error handling. System is fully operational."
+
 frontend:
   - task: "Fix PDF document viewing UI"
     implemented: true

@@ -28,6 +28,7 @@ const MaintenanceForm = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const [formData, setFormData] = useState({
     vehicle_id: '',

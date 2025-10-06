@@ -75,6 +75,28 @@ const OrderForm = () => {
     }));
   };
 
+  // Fonction pour calculer le nombre de jours
+  const calculateDays = (startDate, endDate) => {
+    if (!startDate || !endDate) return 1;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Include both dates
+    return Math.max(1, diffDays);
+  };
+
+  // Fonction pour calculer le total d'un item
+  const calculateItemTotal = (item) => {
+    const days = calculateDays(item.start_date, item.end_date);
+    return (item.daily_rate * item.quantity * days) || 0;
+  };
+
+  // Fonction pour calculer le total de la commande
+  const calculateOrderTotal = () => {
+    const itemsTotal = formData.items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
+    return itemsTotal + (formData.deposit_amount || 0);
+  };
+
   const updateItem = (index, field, value) => {
     setFormData(prev => {
       const newItems = [...prev.items];

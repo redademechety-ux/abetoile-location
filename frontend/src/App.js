@@ -16,6 +16,8 @@ import InvoiceList from './components/InvoiceList';
 import Settings from './components/Settings';
 import Navigation from './components/Navigation';
 import AccountingDashboard from './components/AccountingDashboard';
+import MaintenanceList from './components/MaintenanceList';
+import MaintenanceForm from './components/MaintenanceForm';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;

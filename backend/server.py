@@ -1663,6 +1663,121 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+async def renew_orders():
+    """Renew eligible orders automatically with dynamic day calculation"""
+    try:
+        today = datetime.now(timezone.utc)
+        
+        # Find orders that need renewal
+        renewable_orders = await db.orders.find({
+            "status": "active",
+            "items.is_renewable": True
+        }).to_list(length=None)
+        
+        for order_data in renewable_orders:
+            order = Order(**order_data)
+            
+            for item in order.items:
+                if item.is_renewable and item.rental_period and item.rental_duration:
+                    # Calculate next renewal date based on end_date + renewal period
+                    current_end_date = item.end_date
+                    
+                    # Calculate new period dates
+                    if item.rental_period == RentalPeriod.DAILY:
+                        new_start_date = current_end_date + timedelta(days=1)
+                        new_end_date = new_start_date + timedelta(days=item.rental_duration - 1)
+                    elif item.rental_period == RentalPeriod.WEEKLY:
+                        new_start_date = current_end_date + timedelta(days=1)
+                        new_end_date = new_start_date + timedelta(weeks=item.rental_duration) - timedelta(days=1)
+                    elif item.rental_period == RentalPeriod.MONTHLY:
+                        new_start_date = current_end_date + timedelta(days=1)
+                        # For monthly, calculate the actual days in the next period
+                        if item.rental_duration == 1:
+                            # Next month
+                            if new_start_date.month == 12:
+                                next_month = new_start_date.replace(year=new_start_date.year + 1, month=1)
+                            else:
+                                next_month = new_start_date.replace(month=new_start_date.month + 1)
+                            
+                            # Calculate days in the month
+                            if next_month.month == 12:
+                                days_in_month = (next_month.replace(year=next_month.year + 1, month=1) - next_month).days
+                            else:
+                                days_in_month = (next_month.replace(month=next_month.month + 1) - next_month).days
+                            
+                            new_end_date = new_start_date + timedelta(days=days_in_month - 1)
+                        else:
+                            # Multiple months - approximate with 30 days per month
+                            new_end_date = new_start_date + timedelta(days=item.rental_duration * 30 - 1)
+                    elif item.rental_period == RentalPeriod.YEARLY:
+                        new_start_date = current_end_date + timedelta(days=1)
+                        new_end_date = new_start_date + timedelta(days=item.rental_duration * 365 - 1)
+                    else:
+                        continue
+                    
+                    # Check if it's time to renew (renewal date has passed)
+                    if new_start_date.date() <= today.date():
+                        # Check if last invoice was paid
+                        last_invoice = await db.invoices.find_one(
+                            {"order_id": order.id},
+                            sort=[("created_at", -1)]
+                        )
+                        
+                        if last_invoice and last_invoice.get('status') == 'paid':
+                            # Create new order item with updated dates and recalculated amount
+                            days = calculate_days_between(new_start_date, new_end_date)
+                            item_total_ht = item.daily_rate * item.quantity * days
+                            
+                            renewed_item = OrderItem(
+                                vehicle_id=item.vehicle_id,
+                                quantity=item.quantity,
+                                daily_rate=item.daily_rate,
+                                total_days=days,
+                                is_renewable=item.is_renewable,
+                                rental_period=item.rental_period,
+                                rental_duration=item.rental_duration,
+                                start_date=new_start_date,
+                                end_date=new_end_date,
+                                item_total_ht=item_total_ht
+                            )
+                            
+                            # Update order with new item dates and totals
+                            client = await db.clients.find_one({"id": order.client_id})
+                            if client:
+                                vat_rate = client['vat_rate'] / 100
+                                
+                                # Create renewal order
+                                renewal_order = Order(
+                                    client_id=order.client_id,
+                                    order_number=f"{order.order_number}-R{int(today.timestamp())}",
+                                    items=[renewed_item],
+                                    deposit_amount=0,  # No deposit on renewals
+                                    total_ht=item_total_ht,
+                                    total_vat=item_total_ht * vat_rate,
+                                    total_ttc=item_total_ht * (1 + vat_rate),
+                                    deposit_vat=0,
+                                    grand_total=item_total_ht * (1 + vat_rate),
+                                    created_by="system"
+                                )
+                                
+                                # Save renewal order
+                                renewal_dict = prepare_for_mongo(renewal_order.dict())
+                                await db.orders.insert_one(renewal_dict)
+                                
+                                # Create invoice for renewal
+                                await create_invoice_from_order(renewal_order, client)
+                                
+                                # Update original order item end dates
+                                await db.orders.update_one(
+                                    {"id": order.id, "items.vehicle_id": item.vehicle_id},
+                                    {"$set": {"items.$.end_date": new_end_date.isoformat()}}
+                                )
+                                
+                                print(f"Order {order.order_number} renewed successfully with {days} days")
+                    
+    except Exception as e:
+        print(f"Error in order renewal: {e}")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()

@@ -108,6 +108,10 @@ function App() {
                 <Route path="/orders/new" element={<OrderForm />} />
                 <Route path="/invoices" element={<InvoiceList />} />
                 <Route path="/accounting" element={<AccountingDashboard />} />
+                <Route path="/maintenance" element={<MaintenanceList />} />
+                <Route path="/maintenance/new" element={<MaintenanceForm />} />
+                <Route path="/maintenance/:id" element={<MaintenanceForm />} />
+                <Route path="/maintenance/:id/edit" element={<MaintenanceForm />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>

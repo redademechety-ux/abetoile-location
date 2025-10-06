@@ -460,18 +460,24 @@ async def create_order(order_data: OrderCreate, current_user: User = Depends(get
 
 async def create_invoice_from_order(order: Order, client: dict):
     invoice_number = await generate_invoice_number()
-    due_date = order.start_date + timedelta(days=30)  # Default 30 days
+    # Use the start date of the first item or current date
+    invoice_date = datetime.now(timezone.utc)
+    due_date = invoice_date + timedelta(days=30)  # Default 30 days
     
     invoice = Invoice(
         invoice_number=invoice_number,
         order_id=order.id,
         client_id=order.client_id,
-        invoice_date=datetime.now(timezone.utc),
+        invoice_date=invoice_date,
         due_date=due_date,
         items=order.items,
+        deposit_amount=order.deposit_amount,
+        deposit_vat=order.deposit_vat,
         total_ht=order.total_ht,
         total_vat=order.total_vat,
         total_ttc=order.total_ttc,
+        grand_total=order.grand_total,
+        remaining_amount=order.grand_total,  # Initially, full amount is remaining
         status=InvoiceStatus.DRAFT
     )
     

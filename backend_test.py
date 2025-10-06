@@ -1807,6 +1807,15 @@ def main():
         ("Order Renewal - Trigger Process", tester.test_order_renewal_process),
         ("Payment Edge Cases - Validation", tester.test_payment_edge_cases),
         ("Complex Order - Multiple Items", tester.test_complex_order_multiple_items),
+        
+        # NEW ORDER RENEWABILITY MANAGEMENT TESTS
+        ("Order Renewability - Create Test Order", tester.test_create_order_for_renewability_tests),
+        ("Order Renewability - Enable Renewability", tester.test_enable_order_renewability),
+        ("Order Renewability - Verify Enabled", tester.test_verify_renewability_enabled),
+        ("Order Renewability - Disable Renewability", tester.test_disable_order_renewability),
+        ("Order Renewability - Verify Disabled", tester.test_verify_renewability_disabled),
+        ("Order Update - Update Existing Order", tester.test_update_existing_order),
+        ("Order Renewability - Error Handling", tester.test_renewability_error_handling),
     ]
     
     # Run all tests

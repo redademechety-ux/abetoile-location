@@ -1683,13 +1683,13 @@ async def renew_orders():
                     current_end_date = item.end_date
                     
                     # Calculate new period dates
-                    if item.rental_period == RentalPeriod.DAILY:
+                    if item.rental_period == RentalPeriod.DAYS:
                         new_start_date = current_end_date + timedelta(days=1)
                         new_end_date = new_start_date + timedelta(days=item.rental_duration - 1)
-                    elif item.rental_period == RentalPeriod.WEEKLY:
+                    elif item.rental_period == RentalPeriod.WEEKS:
                         new_start_date = current_end_date + timedelta(days=1)
                         new_end_date = new_start_date + timedelta(weeks=item.rental_duration) - timedelta(days=1)
-                    elif item.rental_period == RentalPeriod.MONTHLY:
+                    elif item.rental_period == RentalPeriod.MONTHS:
                         new_start_date = current_end_date + timedelta(days=1)
                         # For monthly, calculate the actual days in the next period
                         if item.rental_duration == 1:
@@ -1709,7 +1709,7 @@ async def renew_orders():
                         else:
                             # Multiple months - approximate with 30 days per month
                             new_end_date = new_start_date + timedelta(days=item.rental_duration * 30 - 1)
-                    elif item.rental_period == RentalPeriod.YEARLY:
+                    elif item.rental_period == RentalPeriod.YEARS:
                         new_start_date = current_end_date + timedelta(days=1)
                         new_end_date = new_start_date + timedelta(days=item.rental_duration * 365 - 1)
                     else:

@@ -1842,6 +1842,132 @@ async def trigger_order_renewal(current_user: User = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error during renewal: {str(e)}")
 
+# Maintenance endpoints
+@api_router.post("/maintenance", response_model=MaintenanceRecord)
+async def create_maintenance_record(
+    maintenance_data: MaintenanceRecordCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Créer un nouveau enregistrement de maintenance/réparation"""
+    # Vérifier que le véhicule existe
+    vehicle = await db.vehicles.find_one({"id": maintenance_data.vehicle_id})
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    # Calculer automatiquement les montants
+    vat_amount = maintenance_data.amount_ht * (maintenance_data.vat_rate / 100)
+    amount_ttc = maintenance_data.amount_ht + vat_amount
+    
+    maintenance_record = MaintenanceRecord(
+        vehicle_id=maintenance_data.vehicle_id,
+        maintenance_type=maintenance_data.maintenance_type,
+        description=maintenance_data.description,
+        maintenance_date=maintenance_data.maintenance_date,
+        amount_ht=maintenance_data.amount_ht,
+        vat_rate=maintenance_data.vat_rate,
+        vat_amount=vat_amount,
+        amount_ttc=amount_ttc,
+        supplier=maintenance_data.supplier,
+        notes=maintenance_data.notes,
+        created_by=current_user.id
+    )
+    
+    maintenance_dict = prepare_for_mongo(maintenance_record.dict())
+    await db.maintenance_records.insert_one(maintenance_dict)
+    
+    return maintenance_record
+
+@api_router.get("/maintenance", response_model=List[MaintenanceRecord])
+async def get_maintenance_records(
+    vehicle_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Récupérer les enregistrements de maintenance"""
+    query = {}
+    if vehicle_id:
+        query["vehicle_id"] = vehicle_id
+    
+    records = await db.maintenance_records.find(query).sort("maintenance_date", -1).to_list(length=None)
+    return [MaintenanceRecord(**parse_from_mongo(record)) for record in records]
+
+@api_router.get("/maintenance/{record_id}", response_model=MaintenanceRecord)
+async def get_maintenance_record(
+    record_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Récupérer un enregistrement de maintenance spécifique"""
+    record = await db.maintenance_records.find_one({"id": record_id})
+    if not record:
+        raise HTTPException(status_code=404, detail="Maintenance record not found")
+    
+    return MaintenanceRecord(**parse_from_mongo(record))
+
+@api_router.put("/maintenance/{record_id}", response_model=MaintenanceRecord)
+async def update_maintenance_record(
+    record_id: str,
+    maintenance_data: MaintenanceRecordCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Mettre à jour un enregistrement de maintenance"""
+    existing_record = await db.maintenance_records.find_one({"id": record_id})
+    if not existing_record:
+        raise HTTPException(status_code=404, detail="Maintenance record not found")
+    
+    # Vérifier que le véhicule existe
+    vehicle = await db.vehicles.find_one({"id": maintenance_data.vehicle_id})
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    # Calculer automatiquement les montants
+    vat_amount = maintenance_data.amount_ht * (maintenance_data.vat_rate / 100)
+    amount_ttc = maintenance_data.amount_ht + vat_amount
+    
+    updated_record = MaintenanceRecord(
+        id=record_id,
+        vehicle_id=maintenance_data.vehicle_id,
+        maintenance_type=maintenance_data.maintenance_type,
+        description=maintenance_data.description,
+        maintenance_date=maintenance_data.maintenance_date,
+        amount_ht=maintenance_data.amount_ht,
+        vat_rate=maintenance_data.vat_rate,
+        vat_amount=vat_amount,
+        amount_ttc=amount_ttc,
+        supplier=maintenance_data.supplier,
+        documents=existing_record.get('documents', []),  # Conserver les documents existants
+        notes=maintenance_data.notes,
+        created_at=datetime.fromisoformat(existing_record['created_at']),
+        created_by=existing_record['created_by']
+    )
+    
+    maintenance_dict = prepare_for_mongo(updated_record.dict())
+    await db.maintenance_records.replace_one({"id": record_id}, maintenance_dict)
+    
+    return updated_record
+
+@api_router.delete("/maintenance/{record_id}")
+async def delete_maintenance_record(
+    record_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Supprimer un enregistrement de maintenance"""
+    record = await db.maintenance_records.find_one({"id": record_id})
+    if not record:
+        raise HTTPException(status_code=404, detail="Maintenance record not found")
+    
+    # Supprimer les documents associés
+    for doc_id in record.get('documents', []):
+        await db.documents.delete_one({"id": doc_id})
+        # Supprimer le fichier physique si nécessaire
+        file_path = f"/app/documents/{doc_id}"
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+    
+    await db.maintenance_records.delete_one({"id": record_id})
+    
+    return {"message": "Maintenance record deleted successfully"}
+
 # Include router
 app.include_router(api_router)
 

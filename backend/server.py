@@ -1054,28 +1054,60 @@ async def export_accounting_format(
 # Dashboard endpoint
 @api_router.get("/dashboard")
 async def get_dashboard(current_user: User = Depends(get_current_user)):
+    # Get counts
+    clients_count = await db.clients.count_documents({})
+    vehicles_count = await db.vehicles.count_documents({})
+    orders_count = await db.orders.count_documents({})
+    invoices_count = await db.invoices.count_documents({})
+    
+    # Get current month and year dates
     today = datetime.now(timezone.utc)
+    current_month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    current_year_start = today.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
     
-    # Count overdue invoices
-    overdue_count = await db.invoices.count_documents({
-        "due_date": {"$lt": today.isoformat()},
-        "status": {"$in": ["sent", "overdue"]}
-    })
+    # Calculate monthly revenue (current month)
+    monthly_invoices = await db.invoices.find({
+        "status": "paid",
+        "invoice_date": {
+            "$gte": current_month_start.isoformat(),
+            "$lt": today.isoformat()
+        }
+    }).to_list(length=None)
     
-    # Count active orders
-    active_orders = await db.orders.count_documents({"status": "active"})
+    monthly_revenue = sum(invoice.get('grand_total', invoice.get('total_ttc', 0)) for invoice in monthly_invoices)
     
-    # Count clients
-    total_clients = await db.clients.count_documents({"is_active": True})
+    # Calculate yearly revenue (current year)
+    yearly_invoices = await db.invoices.find({
+        "status": "paid", 
+        "invoice_date": {
+            "$gte": current_year_start.isoformat(),
+            "$lt": today.isoformat()
+        }
+    }).to_list(length=None)
     
-    # Count vehicles
-    total_vehicles = await db.vehicles.count_documents({})
+    yearly_revenue = sum(invoice.get('grand_total', invoice.get('total_ttc', 0)) for invoice in yearly_invoices)
+    
+    # Get recent orders
+    recent_orders = await db.orders.find().sort("created_at", -1).limit(5).to_list(length=None)
+    
+    # Get overdue invoices
+    overdue_invoices = await db.invoices.find({
+        "status": {"$ne": "paid"},
+        "due_date": {"$lt": today.isoformat()}
+    }).to_list(length=None)
     
     return {
-        "overdue_invoices": overdue_count,
-        "active_orders": active_orders,
-        "total_clients": total_clients,
-        "total_vehicles": total_vehicles
+        "stats": {
+            "clients": clients_count,
+            "vehicles": vehicles_count,
+            "orders": orders_count,
+            "invoices": invoices_count,
+            "overdue_invoices": len(overdue_invoices),
+            "monthly_revenue": monthly_revenue,
+            "yearly_revenue": yearly_revenue
+        },
+        "recent_orders": [Order(**parse_from_mongo(order)) for order in recent_orders],
+        "overdue_invoices": [Invoice(**parse_from_mongo(invoice)) for invoice in overdue_invoices]
     }
 
 # Document management models

@@ -210,11 +210,18 @@ const OrderList = () => {
                         {order.total_ttc.toFixed(2)} €
                       </td>
                       <td>
-                        <span className={`status-badge ${
-                          order.status === 'active' ? 'status-success' : 'status-warning'
-                        }`}>
-                          {order.status === 'active' ? 'Active' : 'Terminée'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`status-badge ${
+                            order.status === 'active' ? 'status-success' : 'status-warning'
+                          }`}>
+                            {order.status === 'active' ? 'Active' : 'Terminée'}
+                          </span>
+                          {order.items?.some(item => item.is_renewable) && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800" title="Commande reconductible">
+                              🔄
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <div className="flex gap-2">

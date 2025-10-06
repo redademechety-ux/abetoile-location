@@ -63,7 +63,7 @@ const OrderList = () => {
         rental_duration: newRenewableStatus ? 1 : null
       });
 
-      if (response.data.success) {
+      if (response.data.message) {
         // Mettre à jour l'état local
         setOrders(prevOrders => 
           prevOrders.map(o => 

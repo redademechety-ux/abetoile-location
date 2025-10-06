@@ -184,7 +184,7 @@ class Order(BaseModel):
 class OrderCreate(BaseModel):
     client_id: str
     items: List[OrderItem]
-    start_date: datetime
+    deposit_amount: float = 0
 
 class Invoice(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))

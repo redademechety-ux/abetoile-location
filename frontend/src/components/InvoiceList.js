@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, Receipt, Download, CheckCircle, AlertTriangle, FileText, Loader } from 'lucide-react';
+import { Search, Receipt, Download, CheckCircle, AlertTriangle, FileText, Loader, CreditCard } from 'lucide-react';
+import InvoicePayments from './InvoicePayments';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;

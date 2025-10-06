@@ -208,16 +208,54 @@ const MaintenanceForm = () => {
       let errorMessage = 'Erreur lors du téléchargement du document';
       
       if (error.response) {
-        console.error('Status:', error.response.status);
-        console.error('Data:', error.response.data);
-        errorMessage = error.response.data?.detail || `Erreur serveur (${error.response.status})`;
+        console.error('Status complet:', error.response.status);
+        console.error('Headers:', error.response.headers);
+        console.error('Data complète:', error.response.data);
+        
+        const status = error.response.status;
+        const detail = error.response.data?.detail || error.response.data?.message;
+        
+        switch (status) {
+          case 400:
+            errorMessage = `❌ Fichier invalide: ${detail || 'Vérifiez le type (PDF/JPG/PNG) et la taille (< 10MB)'}`;
+            break;
+          case 401:
+            errorMessage = '🔐 Session expirée. Reconnectez-vous et réessayez.';
+            break;
+          case 403:
+            errorMessage = '🚫 Accès interdit. Vérifiez vos permissions.';
+            break;
+          case 404:
+            errorMessage = '❓ Enregistrement de maintenance non trouvé. Actualisez la page.';
+            break;
+          case 413:
+            errorMessage = '📦 Fichier trop volumineux (maximum 10MB).';
+            break;
+          case 422:
+            errorMessage = `📝 Données invalides: ${detail || 'Vérifiez le format du fichier'}`;
+            break;
+          case 500:
+            errorMessage = `🔧 Erreur serveur interne. Contactez l'administrateur. (Code: ${status})`;
+            break;
+          default:
+            errorMessage = `❌ Erreur HTTP ${status}: ${detail || 'Erreur inconnue'}`;
+        }
       } else if (error.request) {
         console.error('Pas de réponse du serveur:', error.request);
-        errorMessage = 'Pas de réponse du serveur. Vérifiez votre connexion.';
+        errorMessage = '🌐 Pas de réponse du serveur. Vérifiez votre connexion internet.';
       } else {
         console.error('Erreur de configuration:', error.message);
-        errorMessage = `Erreur de configuration: ${error.message}`;
+        errorMessage = `⚙️ Erreur de configuration: ${error.message}`;
       }
+      
+      // Ajouter des informations de debug
+      console.error('🔍 Debug info:', {
+        selectedFileName: selectedFile?.name,
+        selectedFileType: selectedFile?.type,
+        selectedFileSize: selectedFile?.size,
+        maintenanceId: id,
+        apiUrl: `${API}/maintenance/${id}/documents`
+      });
       
       setError(errorMessage);
     } finally {

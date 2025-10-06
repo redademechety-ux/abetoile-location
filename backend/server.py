@@ -171,10 +171,12 @@ class Order(BaseModel):
     client_id: str
     order_number: str
     items: List[OrderItem]
-    start_date: datetime
+    deposit_amount: float = 0  # Montant de caution
     total_ht: float
     total_vat: float
     total_ttc: float
+    deposit_vat: float = 0  # TVA sur la caution
+    grand_total: float = 0  # Total TTC + caution
     status: str = "active"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     created_by: str

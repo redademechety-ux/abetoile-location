@@ -255,6 +255,18 @@ backend:
         -agent: "testing"
         -comment: "Minor: Accounting summary endpoint has datetime comparison issue ('can't compare offset-naive and offset-aware datetimes'). Other accounting features work: entries retrieval, CSV/CIEL/SAGE/CEGID exports all functional. Core accounting functionality operational except summary endpoint."
 
+  - task: "Enhanced order and payment management features"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "testing"
+        -comment: "TESTED: All enhanced order and payment management features are WORKING PERFECTLY with 100% success rate (15/15 tests). Enhanced Order Creation: Dynamic day calculation, deposit handling (200€ + VAT), grand total calculations all accurate. Multiple Payment Management: Partial payments, payment tracking, invoice status updates (draft→partially_paid→paid) fully functional. Payment Deletion: Successfully removes payments and updates invoice status. Order Renewal: Automatic renewal with dynamic day calculation operational. Payment Edge Cases: Negative amounts and overpayments properly rejected. Complex Multi-Item Orders: Multiple items with different date ranges calculated correctly. Fixed backward compatibility issue with existing invoices. All features production-ready."
+
 frontend:
   - task: "Fix PDF document viewing UI"
     implemented: true

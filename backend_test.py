@@ -29,6 +29,8 @@ class AutoProAPITester:
                 response = requests.post(url, json=data, headers=headers)
             elif method == 'PUT':
                 response = requests.put(url, json=data, headers=headers)
+            elif method == 'PATCH':
+                response = requests.patch(url, json=data, headers=headers)
             elif method == 'DELETE':
                 response = requests.delete(url, headers=headers)
 
